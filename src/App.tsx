@@ -83,6 +83,36 @@ const ErpContent: React.FC = () => {
   };
 
   const renderActiveModule = () => {
+    const allowedRoles = MODULE_PERMISSIONS[activeModule];
+    if (allowedRoles && !allowedRoles.includes('*') && !allowedRoles.includes(currentUser.role)) {
+      return (
+        <div className="flex flex-col items-center justify-center min-h-[60vh] p-8 text-center">
+          <div className="w-16 h-16 rounded-2xl bg-red-50 text-red-600 flex items-center justify-center mb-4 shadow-sm border border-red-100">
+            <Lock className="w-8 h-8" />
+          </div>
+          <h2 className="text-xl font-bold text-slate-800 mb-2">Access Restricted</h2>
+          <p className="text-sm text-slate-500 max-w-md mb-6">
+            Your current account role (<span className="font-semibold text-slate-700">{currentUser.role.replace('_', ' ').toUpperCase()}</span>) does not have security clearance to access the requested module.
+          </p>
+          <button
+            onClick={() => {
+              if (currentUser.role === 'student') setActiveModule('student_portal');
+              else if (currentUser.role === 'parent') setActiveModule('parent_portal');
+              else if (currentUser.role === 'faculty') setActiveModule('faculty_portal');
+              else if (currentUser.role === 'counsellor') setActiveModule('admissions_crm');
+              else if (currentUser.role === 'accountant') setActiveModule('fees');
+              else if (currentUser.role === 'hr_manager') setActiveModule('hr_staff');
+              else setActiveModule('ceo_dashboard');
+            }}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-900 hover:bg-blue-800 text-white rounded-xl text-sm font-medium transition shadow-sm"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Return to Default Module
+          </button>
+        </div>
+      );
+    }
+
     switch (activeModule) {
       case 'dashboard':
         if (currentUser.role === 'student') return <StudentPortalView />;
