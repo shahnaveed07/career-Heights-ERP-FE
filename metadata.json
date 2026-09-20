@@ -1,0 +1,6 @@
+{
+  "name": "Career Heights ERP",
+  "description": "Centralized multi-branch Education ERP for Career Heights, featuring branch hierarchy, student & fee management, CRM, academic tracking, and role-based portals.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
