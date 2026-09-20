@@ -158,7 +158,7 @@ export interface AttendanceRecord {
   batchName: string;
   branchId?: string;
   date: string;
-  status: 'present' | 'absent' | 'late' | 'leave';
+  status: AttendanceStatus;
   markedBy?: string;
   checkInTime?: string;
   remarks?: string;

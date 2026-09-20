@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Users,
   Search,
@@ -23,6 +23,7 @@ import {
 import { useErpData } from '../context/ErpDataContext';
 import { useAuth } from '../context/AuthContext';
 import { Student } from '../types';
+import { StudentAvatar } from '../components/common/StudentAvatar';
 
 interface StudentManagementViewProps {
   initialStudentId?: string | null;
@@ -38,6 +39,14 @@ export const StudentManagementView: React.FC<StudentManagementViewProps> = ({ in
   const [selectedBatch, setSelectedBatch] = useState<string>('all');
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
   const [selectedScholarship, setSelectedScholarship] = useState<string>('all');
+  const [formError, setFormError] = useState<string | null>(null);
+
+  // Synchronize branch filter
+  useEffect(() => {
+    if (activeBranchFilter !== 'all') {
+      setSelectedBranch(activeBranchFilter);
+    }
+  }, [activeBranchFilter]);
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
@@ -113,8 +122,8 @@ export const StudentManagementView: React.FC<StudentManagementViewProps> = ({ in
 
   const handleAddSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newStudentForm.name || !newStudentForm.parentName) {
-      alert('Please fill out student name and parent information.');
+    if (!newStudentForm.name.trim() || !newStudentForm.parentName.trim()) {
+      setFormError('Please fill out student name and parent information.');
       return;
     }
 
@@ -132,6 +141,7 @@ export const StudentManagementView: React.FC<StudentManagementViewProps> = ({ in
         : 0,
     });
 
+    setFormError(null);
     setShowAddModal(false);
     setActiveStudent(created);
   };
@@ -287,10 +297,10 @@ export const StudentManagementView: React.FC<StudentManagementViewProps> = ({ in
                   >
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-3">
-                        <img
-                          src={student.photo}
-                          alt={student.name}
-                          className="h-8 w-8 rounded-full object-cover ring-1 ring-slate-200"
+                        <StudentAvatar
+                          photo={student.photo}
+                          name={student.name}
+                          size="md"
                         />
                         <div>
                           <p className="font-bold text-slate-900 text-sm">{student.name}</p>
@@ -424,10 +434,10 @@ export const StudentManagementView: React.FC<StudentManagementViewProps> = ({ in
             {/* Modal Header */}
             <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50 px-6 py-4">
               <div className="flex items-center gap-3">
-                <img
-                  src={activeStudent.photo}
-                  alt={activeStudent.name}
-                  className="h-12 w-12 rounded-full object-cover ring-2 ring-blue-900/20"
+                <StudentAvatar
+                  photo={activeStudent.photo}
+                  name={activeStudent.name}
+                  size="lg"
                 />
                 <div>
                   <div className="flex items-center gap-2">
@@ -662,6 +672,12 @@ export const StudentManagementView: React.FC<StudentManagementViewProps> = ({ in
             </div>
 
             <form onSubmit={handleAddSubmit} className="mt-4 space-y-4 text-xs">
+              {formError && (
+                <div className="rounded-lg bg-red-50 border border-red-200 p-2.5 text-xs text-red-700 font-semibold flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4 shrink-0 text-red-600" />
+                  <span>{formError}</span>
+                </div>
+              )}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block font-semibold text-slate-700 mb-1">Student Full Name *</label>

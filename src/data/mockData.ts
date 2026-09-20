@@ -7,6 +7,7 @@ import {
   Student,
   Enquiry,
   AttendanceRecord,
+  AttendanceStatus,
   FacultyAttendance,
   FeeRecord,
   FeeReceipt,
@@ -25,6 +26,7 @@ import {
   CHTQSchool,
   AuditLogItem,
 } from '../types';
+import { getTodayDateString, getPastDateString, getFutureDateString } from '../utils/dateUtils';
 
 export const INITIAL_BRANCHES: Branch[] = [
   {
@@ -418,6 +420,21 @@ const LAST_NAMES = [
   'Banday', 'Choudhary', 'Reshi', 'Tantry', 'Ganie', 'Sofi', 'Bukhari', 'Pandit', 'Chisti',
 ];
 
+export const VALID_STUDENT_AVATARS = [
+  'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=160&q=80',
+  'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=160&q=80',
+  'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=160&q=80',
+  'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=160&q=80',
+  'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=160&q=80',
+  'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=160&q=80',
+  'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=160&q=80',
+  'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=160&q=80',
+  'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=160&q=80',
+  'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=160&q=80',
+  'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=160&q=80',
+  'https://images.unsplash.com/photo-1501196354995-cbb51c65aaea?auto=format&fit=crop&w=160&q=80',
+];
+
 function generateStudents(): Student[] {
   const students: Student[] = [];
 
@@ -575,7 +592,7 @@ function generateStudents(): Student[] {
         studentId: `CH-2026-${String(idCounter).padStart(3, '0')}`,
         admissionNo: `ADM-26-${String(idCounter).padStart(3, '0')}`,
         name: fullName,
-        photo: `https://images.unsplash.com/photo-${1500000000000 + (idCounter * 98765) % 800000000}?auto=format&fit=crop&w=160&q=80`,
+        photo: VALID_STUDENT_AVATARS[(idCounter - 1) % VALID_STUDENT_AVATARS.length],
         gender: idCounter % 2 === 0 ? 'Female' : 'Male',
         dob: `200${7 + (idCounter % 3)}-0${1 + (idCounter % 9)}-${10 + (idCounter % 18)}`,
         email: `${fn.toLowerCase()}.${ln.toLowerCase()}@careerheights.demo`,
@@ -872,12 +889,12 @@ export const INITIAL_ENQUIRIES: Enquiry[] = [
     status: 'counselling',
     source: 'CHTQ Scholarship Test',
     priority: 'high',
-    date: '2026-09-18',
-    nextFollowUp: '2026-09-21',
+    date: getPastDateString(2),
+    nextFollowUp: getFutureDateString(1),
     notes: 'Scored 82% in CHTQ. Parent wants confirmation on hostel tie-ups and faculty allotment.',
     counsellingHistory: [
-      { date: '2026-09-18', notes: 'Initial walk-in counselling completed. Demonstrated previous JEE results.', by: 'Mehak Khan' },
-      { date: '2026-09-19', notes: 'Parent called to ask for scholarship certificate copy.', by: 'Mehak Khan' }
+      { date: getPastDateString(2), notes: 'Initial walk-in counselling completed. Demonstrated previous JEE results.', by: 'Mehak Khan' },
+      { date: getPastDateString(1), notes: 'Parent called to ask for scholarship certificate copy.', by: 'Mehak Khan' }
     ]
   },
   {
@@ -895,11 +912,11 @@ export const INITIAL_ENQUIRIES: Enquiry[] = [
     status: 'contacted',
     source: 'Website Enquiry',
     priority: 'medium',
-    date: '2026-09-19',
-    nextFollowUp: '2026-09-22',
+    date: getPastDateString(1),
+    nextFollowUp: getFutureDateString(2),
     notes: 'Wants weekend doubt solving batch details.',
     counsellingHistory: [
-      { date: '2026-09-19', notes: 'Sent brochure via WhatsApp. Awaiting visit on Sunday.', by: 'Mehak Khan' }
+      { date: getPastDateString(1), notes: 'Sent brochure via WhatsApp. Awaiting visit on Sunday.', by: 'Mehak Khan' }
     ]
   },
   {
@@ -917,8 +934,8 @@ export const INITIAL_ENQUIRIES: Enquiry[] = [
     status: 'new',
     source: 'Referral',
     priority: 'high',
-    date: '2026-09-20',
-    nextFollowUp: '2026-09-20',
+    date: getTodayDateString(),
+    nextFollowUp: getTodayDateString(),
     notes: 'Referred by Aarav Sharma. Interested in joining immediately.',
     counsellingHistory: []
   },
@@ -1017,7 +1034,7 @@ export const INITIAL_FEE_RECEIPTS: FeeReceipt[] = [
     amount: 23750,
     paymentMethod: 'UPI',
     transactionRef: 'UPI-AXIS-98218731',
-    date: '2026-09-15',
+    date: getPastDateString(4),
     receivedBy: 'Imran Lone (Accounts)',
     notes: 'Q2 Tuition Installment paid in full with CHTQ concession applied.',
   },
@@ -1032,7 +1049,7 @@ export const INITIAL_FEE_RECEIPTS: FeeReceipt[] = [
     amount: 30000,
     paymentMethod: 'Net Banking',
     transactionRef: 'NEFT-JKB-8726190',
-    date: '2026-09-17',
+    date: getPastDateString(2),
     receivedBy: 'Imran Lone (Accounts)',
     notes: 'Term 2 Fee cleared.',
   },
@@ -1047,7 +1064,7 @@ export const INITIAL_FEE_RECEIPTS: FeeReceipt[] = [
     amount: 25000,
     paymentMethod: 'Cash',
     transactionRef: 'CSH-HDW-4401',
-    date: '2026-09-19',
+    date: getTodayDateString(),
     receivedBy: 'Imran Lone (Accounts)',
     notes: 'Study Material and Lab Module Fees.',
   },
@@ -1285,10 +1302,43 @@ export const INITIAL_CHTQ_CANDIDATES: CHTQCandidate[] = [
 ];
 
 export const INITIAL_AUDIT_LOGS: AuditLogItem[] = [
-  { id: 'log-01', userId: 'u-ceo', userName: 'Dr. Ghulam Mohammad Lone', userRole: 'CEO / Super Admin', action: 'Approved Annual Academic Calendar 2026', module: 'Academic Management', details: 'Validated term schedules for Handwara, Qaziabad, Dangiwacha, Kalambad, Unso.', timestamp: '2026-09-20 09:15 AM', ip: '103.24.112.5' },
-  { id: 'log-02', userId: 'u-accountant', userName: 'Imran Lone', userRole: 'Accountant', action: 'Generated Fee Receipt #0893', module: 'Fees & Accounts', details: 'Processed ₹25,000 via Cash for Priya Patel (CH-2026-004).', timestamp: '2026-09-20 10:30 AM', ip: '192.168.1.12' },
-  { id: 'log-03', userId: 'u-counsellor', userName: 'Mehak Khan', userRole: 'Counsellor', action: 'Recorded Enquiry & Walk-in Notes', module: 'Admission & Enquiry CRM', details: 'Logged candidate Sahil Gulzar for Handwara NEET Target batch.', timestamp: '2026-09-20 11:05 AM', ip: '192.168.1.18' },
-  { id: 'log-04', userId: 'u-faculty', userName: 'Dr. Rahul Sharma', userRole: 'Faculty', action: 'Marked Batch Attendance (JEE-A)', module: 'Attendance', details: 'Recorded 35 Present, 2 Absent, 1 Late for Batch HDW-JEE-A-26.', timestamp: '2026-09-20 01:45 PM', ip: '192.168.1.44' },
-  { id: 'log-05', userId: 'u-branch', userName: 'Mohammad Altaf Lone', userRole: 'Branch Admin', action: 'Rejected Incomplete Marksheet Document', module: 'Document Management', details: 'Rejected blurred document for Faizan Dar with resubmission guidance.', timestamp: '2026-09-19 04:20 PM', ip: '192.168.1.10' },
-  { id: 'log-06', userId: 'u-student', userName: 'Aarav Sharma', userRole: 'Student', action: 'Submitted Homework Assignment #DPP-42', module: 'Academic Management', details: 'Uploaded 4 solution pages for Rotational Mechanics.', timestamp: '2026-09-19 06:12 PM', ip: '106.211.82.9' },
+  { id: 'log-01', userId: 'u-ceo', userName: 'Dr. Ghulam Mohammad Lone', userRole: 'CEO / Super Admin', action: 'Approved Annual Academic Calendar 2026', module: 'Academic Management', details: 'Validated term schedules for Handwara, Qaziabad, Dangiwacha, Kalambad, Unso.', timestamp: '2026-09-20 09:15 AM', ip: 'Demo Environment' },
+  { id: 'log-02', userId: 'u-accountant', userName: 'Imran Lone', userRole: 'Accountant', action: 'Generated Fee Receipt #0893', module: 'Fees & Accounts', details: 'Processed ₹25,000 via Cash for Priya Patel (CH-2026-004).', timestamp: '2026-09-20 10:30 AM', ip: 'Demo Environment' },
+  { id: 'log-03', userId: 'u-counsellor', userName: 'Mehak Khan', userRole: 'Counsellor', action: 'Recorded Enquiry & Walk-in Notes', module: 'Admission & Enquiry CRM', details: 'Logged candidate Sahil Gulzar for Handwara NEET Target batch.', timestamp: '2026-09-20 11:05 AM', ip: 'Demo Environment' },
+  { id: 'log-04', userId: 'u-faculty', userName: 'Dr. Rahul Sharma', userRole: 'Faculty', action: 'Marked Batch Attendance (JEE-A)', module: 'Attendance', details: 'Recorded 35 Present, 2 Absent, 1 Late for Batch HDW-JEE-A-26.', timestamp: '2026-09-20 01:45 PM', ip: 'Demo Environment' },
+  { id: 'log-05', userId: 'u-branch', userName: 'Mohammad Altaf Lone', userRole: 'Branch Admin', action: 'Rejected Incomplete Marksheet Document', module: 'Document Management', details: 'Rejected blurred document for Faizan Dar with resubmission guidance.', timestamp: '2026-09-19 04:20 PM', ip: 'Demo Environment' },
+  { id: 'log-06', userId: 'u-student', userName: 'Aarav Sharma', userRole: 'Student', action: 'Submitted Homework Assignment #DPP-42', module: 'Academic Management', details: 'Uploaded 4 solution pages for Rotational Mechanics.', timestamp: '2026-09-19 06:12 PM', ip: 'Demo Environment' },
 ];
+
+export function generateInitialAttendanceRecords(studentsList: Student[]): AttendanceRecord[] {
+  const dates: string[] = [];
+  for (let i = 9; i >= 0; i--) {
+    dates.push(getPastDateString(i));
+  }
+  const records: AttendanceRecord[] = [];
+  
+  for (const s of studentsList) {
+    const targetPresent = Math.max(1, Math.round((s.attendanceRate / 100) * dates.length));
+    dates.forEach((dateStr, idx) => {
+      let status: AttendanceStatus = 'present';
+      if (idx >= targetPresent) {
+        status = idx % 2 === 0 ? 'absent' : 'late';
+      }
+      records.push({
+        id: `att-${s.id}-${dateStr}`,
+        studentId: s.id,
+        studentName: s.name,
+        studentCode: s.studentId,
+        batchId: s.batchId,
+        batchName: s.batchName,
+        branchId: s.branchId,
+        date: dateStr,
+        status,
+        checkInTime: status === 'present' || status === 'late' ? '08:30 AM' : undefined,
+        markedBy: 'Faculty / Mentor',
+      });
+    });
+  }
+  return records;
+}
+

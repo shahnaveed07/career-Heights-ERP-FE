@@ -7,6 +7,7 @@ import {
   Batch,
   Enquiry,
   AttendanceRecord,
+  AttendanceStatus,
   FeeReceipt,
   ExamTest,
   TestResult,
@@ -45,8 +46,13 @@ import {
   INITIAL_CHTQ_SCHOOLS,
   INITIAL_CHTQ_CANDIDATES,
   INITIAL_AUDIT_LOGS,
+  VALID_STUDENT_AVATARS,
+  generateInitialAttendanceRecords,
 } from '../data/mockData';
 import { useAuth } from './AuthContext';
+import { getTodayDateString } from '../utils/dateUtils';
+import { generateNextStudentId, generateNextReceiptNo } from '../utils/idGenerators';
+import { calculateStudentAttendanceSummary, upsertAttendanceRecord } from '../utils/attendanceCalculator';
 
 interface ErpDataContextType {
   branches: Branch[];
@@ -77,10 +83,10 @@ interface ErpDataContextType {
   updateStudent: (id: string, updates: Partial<Student>) => void;
   addEnquiry: (enquiryData: Partial<Enquiry>) => void;
   updateEnquiryStatus: (id: string, status: Enquiry['status'], lostReason?: string) => void;
-  convertEnquiryToAdmission: (enquiryId: string) => Student | null;
+  convertEnquiryToAdmission: (enquiryId: string, options?: { batchId?: string; feesTotal?: number; feesPaid?: number }) => Student | null;
   addCounsellingNote: (id: string, note: string) => void;
-  markBatchAttendance: (batchId: string, records: { studentId: string; status: 'present' | 'absent' | 'late' | 'leave' }[]) => void;
-  markStudentAttendance: (studentId: string, statusOrDate: string, maybeStatus?: 'present' | 'absent' | 'late' | 'leave') => void;
+  markBatchAttendance: (batchId: string, dateOrRecords: string | { studentId: string; status: AttendanceStatus }[], maybeStatus?: AttendanceStatus) => void;
+  markStudentAttendance: (studentId: string, dateOrStatus: string, maybeStatus?: AttendanceStatus) => void;
   recordFeePayment: (paymentData: { studentId: string; amount: number; paymentMethod: FeeReceipt['paymentMethod']; transactionRef: string; notes: string }) => FeeReceipt;
   addTest: (testData: Partial<ExamTest>) => void;
   runOmrSimulation: (testId: string) => void;
@@ -124,16 +130,7 @@ export const ErpDataProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [chtqCandidates, setChtqCandidates] = useState<CHTQCandidate[]>(INITIAL_CHTQ_CANDIDATES);
   const [auditLogs, setAuditLogs] = useState<AuditLogItem[]>(INITIAL_AUDIT_LOGS);
   const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>(() => {
-    return INITIAL_STUDENTS.map(s => ({
-      id: `att-${s.id}`,
-      studentId: s.id,
-      studentName: s.name,
-      batchId: s.batchId,
-      batchName: s.batchName,
-      date: new Date().toISOString().split('T')[0],
-      status: s.attendanceRate >= 80 ? 'present' : s.attendanceRate >= 70 ? 'late' : 'absent',
-      checkInTime: '08:30 AM',
-    }));
+    return generateInitialAttendanceRecords(INITIAL_STUDENTS);
   });
 
   const addAuditLog = (action: string, module: string, details: string) => {
@@ -146,27 +143,29 @@ export const ErpDataProvider: React.FC<{ children: React.ReactNode }> = ({ child
       module,
       details,
       timestamp: new Date().toLocaleString('en-US', { dateStyle: 'short', timeStyle: 'short' }),
-      ip: '192.168.1.100',
+      ip: 'Demo Environment',
     };
     setAuditLogs(prev => [newLog, ...prev]);
   };
 
   const addStudent = (studentData: Partial<Student>): Student => {
-    const nextNum = students.length + 1;
+    const { studentId, id, admissionNo } = generateNextStudentId(students);
     const branch = branches.find(b => b.id === studentData.branchId) || branches[0];
     const batch = batches.find(b => b.id === studentData.batchId) || batches[0];
     const totalFee = studentData.feesTotal || 95000;
-    const paid = studentData.feesPaid || 25000;
+    const paid = studentData.feesPaid || 0;
+    const pending = Math.max(0, totalFee - paid);
+    const admDate = studentData.admissionDate || getTodayDateString();
 
     const newStudent: Student = {
-      id: `st-${String(nextNum).padStart(3, '0')}`,
-      studentId: `CH-2026-${String(nextNum).padStart(3, '0')}`,
-      admissionNo: `ADM-26-${String(nextNum).padStart(3, '0')}`,
+      id,
+      studentId,
+      admissionNo,
       name: studentData.name || 'New Student',
-      photo: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=160&q=80',
+      photo: studentData.photo || VALID_STUDENT_AVATARS[students.length % VALID_STUDENT_AVATARS.length],
       gender: studentData.gender || 'Male',
       dob: studentData.dob || '2008-05-15',
-      email: studentData.email || `student.${nextNum}@careerheights.demo`,
+      email: studentData.email || `student.${id}@careerheights.demo`,
       phone: studentData.phone || '+91 97970 99999',
       address: studentData.address || `${branch.name} Town, J&K`,
       branchId: branch.id,
@@ -182,7 +181,7 @@ export const ErpDataProvider: React.FC<{ children: React.ReactNode }> = ({ child
       parentOccupation: studentData.parentOccupation || 'Self-Employed',
       schoolName: studentData.schoolName || 'Govt Model School',
       previousPercentage: studentData.previousPercentage || 88.5,
-      admissionDate: new Date().toISOString().split('T')[0],
+      admissionDate: admDate,
       admissionSource: studentData.admissionSource || 'Direct Walk-in',
       scholarshipType: studentData.scholarshipType || 'None',
       scholarshipPercent: studentData.scholarshipPercent || 0,
@@ -190,7 +189,7 @@ export const ErpDataProvider: React.FC<{ children: React.ReactNode }> = ({ child
       attendanceRate: 100,
       feesTotal: totalFee,
       feesPaid: paid,
-      feesPending: totalFee - paid,
+      feesPending: pending,
       feesOverdue: 0,
       academicRisk: 'Low',
       documentsCount: 2,
@@ -199,6 +198,39 @@ export const ErpDataProvider: React.FC<{ children: React.ReactNode }> = ({ child
     };
 
     setStudents(prev => [newStudent, ...prev]);
+
+    // If initial fee was paid at enrollment, record consistent receipt
+    if (paid > 0) {
+      const { receiptNo: initRcptNo, id: initRcptId } = generateNextReceiptNo(feeReceipts);
+      const initialReceipt: FeeReceipt = {
+        id: initRcptId,
+        receiptNo: initRcptNo,
+        studentId: newStudent.id,
+        studentName: newStudent.name,
+        studentCode: newStudent.studentId,
+        branchName: newStudent.branchName,
+        batchName: newStudent.batchName,
+        amount: paid,
+        paymentMethod: 'UPI',
+        transactionRef: `INIT-ADM-${Date.now().toString().slice(-6)}`,
+        date: admDate,
+        receivedBy: currentUser?.name || 'Accounts Desk',
+        notes: 'Initial admission installment recorded upon enrollment.',
+      };
+      setFeeReceipts(prev => [initialReceipt, ...prev]);
+    }
+
+    // Seed initial attendance record for the student on current date
+    setAttendanceRecords(prev => {
+      return upsertAttendanceRecord(prev, newStudent.id, admDate, 'present', {
+        studentName: newStudent.name,
+        studentCode: newStudent.studentId,
+        batchId: newStudent.batchId,
+        batchName: newStudent.batchName,
+        branchId: newStudent.branchId,
+        markedBy: currentUser?.name || 'Academic Coordinator',
+      });
+    });
 
     // Update branch student count
     setBranches(prev =>
@@ -219,6 +251,7 @@ export const ErpDataProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const addEnquiry = (enquiryData: Partial<Enquiry>) => {
     const branch = branches.find(b => b.id === enquiryData.branchId) || branches[0];
+    const today = getTodayDateString();
     const newEnq: Enquiry = {
       id: `enq-${Date.now()}`,
       studentName: enquiryData.studentName || 'Prospective Student',
@@ -234,11 +267,11 @@ export const ErpDataProvider: React.FC<{ children: React.ReactNode }> = ({ child
       status: 'new',
       source: enquiryData.source || 'Direct Walk-in',
       priority: enquiryData.priority || 'medium',
-      date: new Date().toISOString().split('T')[0],
+      date: enquiryData.date || today,
       nextFollowUp: new Date(Date.now() + 86400000 * 2).toISOString().split('T')[0],
       notes: enquiryData.notes || 'Inquired regarding admission details.',
       counsellingHistory: [
-        { date: new Date().toISOString().split('T')[0], notes: 'Initial enquiry registered.', by: currentUser?.name || 'Staff' }
+        { date: today, notes: 'Initial enquiry registered.', by: currentUser?.name || 'Staff' }
       ]
     };
     setEnquiries(prev => [newEnq, ...prev]);
@@ -252,23 +285,36 @@ export const ErpDataProvider: React.FC<{ children: React.ReactNode }> = ({ child
     addAuditLog('Updated Enquiry Pipeline Stage', 'Admission & Enquiry CRM', `Moved enquiry #${id} to status "${status}".`);
   };
 
-  const convertEnquiryToAdmission = (enquiryId: string): Student | null => {
+  const convertEnquiryToAdmission = (enquiryId: string, options?: { batchId?: string; feesTotal?: number; feesPaid?: number }): Student | null => {
     const enq = enquiries.find(e => e.id === enquiryId);
     if (!enq) return null;
-    const defaultBatch = batches[0];
+
+    // Resolve assigned batch preserving branch and matching course
+    let selectedBatch = options?.batchId ? batches.find(b => b.id === options.batchId) : undefined;
+    if (!selectedBatch) {
+      selectedBatch = batches.find(b => b.branchId === enq.branchId) || batches[0];
+    }
+    const branch = branches.find(b => b.id === enq.branchId) || branches.find(b => b.id === selectedBatch?.branchId) || branches[0];
+
     const newStudent = addStudent({
       name: enq.studentName || enq.name || 'Enrolled Student',
       parentName: enq.parentName || 'Parent Guardian',
       phone: enq.phone || '+91 94190 00000',
       email: enq.email || 'student@careerheights.demo',
-      branchId: enq.branchId || branches[0].id,
-      batchId: defaultBatch.id,
-      batchName: defaultBatch.name,
-      admissionSource: 'Direct Walk-in',
+      branchId: branch.id,
+      branchName: branch.name,
+      batchId: selectedBatch.id,
+      batchName: selectedBatch.name,
+      admissionSource: (enq.source as Student['admissionSource']) || 'Direct Walk-in',
+      admissionDate: getTodayDateString(),
       status: 'active',
+      feesTotal: options?.feesTotal || 95000,
+      feesPaid: options?.feesPaid || 25000,
+      remarks: `Enrolled from CRM Enquiry #${enq.id}. Target Course: ${enq.targetCourse}. Counsellor: ${enq.counsellorName || 'Admissions Desk'}.`,
     });
+
     updateEnquiryStatus(enquiryId, 'admission');
-    addAuditLog('Converted Enquiry to Admission', 'Admission & Enquiry CRM', `Enrolled lead ${enq.studentName} as new student.`);
+    addAuditLog('Converted Enquiry to Admission', 'Admission & Enquiry CRM', `Enrolled lead ${enq.studentName} with source "${enq.source}" into batch "${selectedBatch.name}".`);
     return newStudent;
   };
 
@@ -276,7 +322,7 @@ export const ErpDataProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setEnquiries(prev =>
       prev.map(e => {
         if (e.id === id) {
-          const newEntry = { date: new Date().toISOString().split('T')[0], notes: note, by: currentUser?.name || 'Counsellor' };
+          const newEntry = { date: getTodayDateString(), notes: note, by: currentUser?.name || 'Counsellor' };
           return { ...e, counsellingHistory: [...e.counsellingHistory, newEntry] };
         }
         return e;
@@ -285,73 +331,130 @@ export const ErpDataProvider: React.FC<{ children: React.ReactNode }> = ({ child
     addAuditLog('Added Counselling Interaction Note', 'Admission & Enquiry CRM', `Added note to enquiry ID: ${id}`);
   };
 
-  const markBatchAttendance = (batchId: string, records: { studentId: string; status: 'present' | 'absent' | 'late' | 'leave' }[]) => {
+  const markBatchAttendance = (
+    batchId: string,
+    dateOrRecords: string | { studentId: string; status: AttendanceStatus }[],
+    maybeStatus?: AttendanceStatus
+  ) => {
     const batch = batches.find(b => b.id === batchId);
-    const dateStr = new Date().toISOString().split('T')[0];
-    
-    // Update students' local attendance rate
-    setStudents(prev =>
-      prev.map(s => {
-        const found = records.find(r => r.studentId === s.id);
-        if (found) {
-          let newRate = s.attendanceRate;
-          if (found.status === 'present') newRate = Math.min(100, Math.round(newRate * 0.98 + 2));
-          else if (found.status === 'absent') newRate = Math.max(45, Math.round(newRate * 0.96));
-          return { ...s, attendanceRate: newRate, academicRisk: newRate < 75 ? 'Critical' : newRate < 80 ? 'Medium' : 'Low' };
-        }
-        return s;
-      })
-    );
+    const dateStr = typeof dateOrRecords === 'string' ? dateOrRecords : getTodayDateString();
+    const batchStudents = students.filter(s => s.batchId === batchId);
 
-    addAuditLog('Marked Daily Attendance', 'Attendance', `Recorded attendance for ${records.length} students in batch ${batch?.name || batchId}.`);
-  };
-
-  const markStudentAttendance = (studentId: string, statusOrDate: string, maybeStatus?: 'present' | 'absent' | 'late' | 'leave') => {
-    const dateStr = maybeStatus ? statusOrDate : new Date().toISOString().split('T')[0];
-    const status = (maybeStatus || statusOrDate) as 'present' | 'absent' | 'late' | 'leave';
     setAttendanceRecords(prev => {
-      const idx = prev.findIndex(r => r.studentId === studentId && r.date === dateStr);
-      if (idx !== -1) {
-        const updated = [...prev];
-        updated[idx] = { ...updated[idx], status };
-        return updated;
+      let currentRecords = [...prev];
+      if (typeof dateOrRecords === 'string' && maybeStatus) {
+        // Mark all students in batch with maybeStatus on specified dateStr
+        for (const s of batchStudents) {
+          currentRecords = upsertAttendanceRecord(currentRecords, s.id, dateStr, maybeStatus, {
+            studentName: s.name,
+            studentCode: s.studentId,
+            batchId: s.batchId,
+            batchName: s.batchName,
+            branchId: s.branchId,
+            markedBy: currentUser?.name || 'Faculty / Mentor',
+          });
+        }
+      } else if (Array.isArray(dateOrRecords)) {
+        for (const r of dateOrRecords) {
+          const s = batchStudents.find(st => st.id === r.studentId);
+          if (s) {
+            currentRecords = upsertAttendanceRecord(currentRecords, s.id, dateStr, r.status, {
+              studentName: s.name,
+              studentCode: s.studentId,
+              batchId: s.batchId,
+              batchName: s.batchName,
+              branchId: s.branchId,
+              markedBy: currentUser?.name || 'Faculty / Mentor',
+            });
+          }
+        }
       }
-      const st = students.find(s => s.id === studentId);
-      return [
-        {
-          id: `att-${Date.now()}-${studentId}`,
-          studentId,
-          studentName: st?.name || 'Student',
-          batchId: st?.batchId || '',
-          batchName: st?.batchName || '',
-          date: dateStr,
-          status,
-          checkInTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        },
-        ...prev,
-      ];
+      return currentRecords;
     });
 
-    setStudents(prev =>
-      prev.map(s => {
-        if (s.id === studentId) {
-          let newRate = s.attendanceRate;
-          if (status === 'present') newRate = Math.min(100, Math.round(newRate * 0.98 + 2));
-          else if (status === 'absent') newRate = Math.max(45, Math.round(newRate * 0.96));
-          return { ...s, attendanceRate: newRate, academicRisk: newRate < 75 ? 'Critical' : newRate < 80 ? 'Medium' : 'Low' };
-        }
-        return s;
-      })
-    );
+    // Derive attendance rate for all affected students from updated records
+    setTimeout(() => {
+      setAttendanceRecords(currentRecords => {
+        setStudents(prevStudents =>
+          prevStudents.map(s => {
+            if (s.batchId === batchId) {
+              const summary = calculateStudentAttendanceSummary(s.id, currentRecords);
+              return {
+                ...s,
+                attendanceRate: summary.rate,
+                academicRisk: summary.rate < 75 ? 'Critical' : summary.rate < 80 ? 'Medium' : 'Low',
+              };
+            }
+            return s;
+          })
+        );
+        return currentRecords;
+      });
+    }, 0);
+
+    addAuditLog('Marked Batch Attendance', 'Attendance', `Recorded attendance for batch ${batch?.name || batchId} on ${dateStr}.`);
+  };
+
+  const markStudentAttendance = (studentId: string, dateOrStatus: string, maybeStatus?: AttendanceStatus) => {
+    // Support both markStudentAttendance(studentId, date, status) and markStudentAttendance(studentId, status)
+    const dateStr = maybeStatus ? dateOrStatus : getTodayDateString();
+    const status = (maybeStatus || dateOrStatus) as AttendanceStatus;
+
+    const student = students.find(s => s.id === studentId);
+    if (!student) return;
+
+    setAttendanceRecords(prev => {
+      return upsertAttendanceRecord(prev, studentId, dateStr, status, {
+        studentName: student.name,
+        studentCode: student.studentId,
+        batchId: student.batchId,
+        batchName: student.batchName,
+        branchId: student.branchId,
+        markedBy: currentUser?.name || 'Faculty / Mentor',
+      });
+    });
+
+    // Derive student attendance rate strictly from records
+    setTimeout(() => {
+      setAttendanceRecords(currentRecords => {
+        const summary = calculateStudentAttendanceSummary(studentId, currentRecords);
+        setStudents(prevStudents =>
+          prevStudents.map(s => {
+            if (s.id === studentId) {
+              const newRate = summary.rate;
+              return {
+                ...s,
+                attendanceRate: newRate,
+                academicRisk: newRate < 75 ? 'Critical' : newRate < 80 ? 'Medium' : 'Low',
+              };
+            }
+            return s;
+          })
+        );
+        return currentRecords;
+      });
+    }, 0);
+
+    addAuditLog('Marked Student Attendance', 'Attendance', `Marked ${student.name} as ${status.toUpperCase()} on ${dateStr}.`);
   };
 
   const recordFeePayment = (paymentData: { studentId: string; amount: number; paymentMethod: FeeReceipt['paymentMethod']; transactionRef: string; notes: string }): FeeReceipt => {
-    const student = students.find(s => s.id === paymentData.studentId)!;
-    const rcptNo = `CH/RCPT/2026/${Math.floor(1000 + Math.random() * 9000)}`;
+    const student = students.find(s => s.id === paymentData.studentId);
+    if (!student) {
+      throw new Error(`Student ${paymentData.studentId} not found`);
+    }
+    if (paymentData.amount <= 0) {
+      throw new Error('Payment amount must be greater than ₹0.');
+    }
+    if (paymentData.amount > student.feesPending) {
+      throw new Error(`Payment amount (₹${paymentData.amount.toLocaleString()}) cannot exceed the outstanding balance of ₹${student.feesPending.toLocaleString()}.`);
+    }
+
+    const { receiptNo, id: rcptId } = generateNextReceiptNo(feeReceipts);
 
     const newReceipt: FeeReceipt = {
-      id: `rcpt-${Date.now()}`,
-      receiptNo: rcptNo,
+      id: rcptId,
+      receiptNo,
       studentId: student.id,
       studentName: student.name,
       studentCode: student.studentId,
@@ -360,7 +463,7 @@ export const ErpDataProvider: React.FC<{ children: React.ReactNode }> = ({ child
       amount: paymentData.amount,
       paymentMethod: paymentData.paymentMethod,
       transactionRef: paymentData.transactionRef,
-      date: new Date().toISOString().split('T')[0],
+      date: getTodayDateString(),
       receivedBy: currentUser?.name || 'Imran Lone (Accounts)',
       notes: paymentData.notes,
     };
@@ -385,7 +488,7 @@ export const ErpDataProvider: React.FC<{ children: React.ReactNode }> = ({ child
       })
     );
 
-    addAuditLog('Generated Official Fee Receipt', 'Fees & Accounts', `Collected ₹${paymentData.amount.toLocaleString()} from ${student.name} (${student.studentId}) via ${paymentData.paymentMethod}. Receipt: ${rcptNo}`);
+    addAuditLog('Generated Official Fee Receipt', 'Fees & Accounts', `Collected ₹${paymentData.amount.toLocaleString()} from ${student.name} (${student.studentId}) via ${paymentData.paymentMethod}. Receipt: ${receiptNo}`);
 
     return newReceipt;
   };
@@ -403,7 +506,7 @@ export const ErpDataProvider: React.FC<{ children: React.ReactNode }> = ({ child
       batchName: batch.name,
       branchId: batch.branchId,
       branchName: batch.branchName,
-      testDate: testData.testDate || new Date().toISOString().split('T')[0],
+      testDate: testData.testDate || getTodayDateString(),
       durationMinutes: testData.durationMinutes || 180,
       totalMarks: testData.totalMarks || 300,
       subjects: testData.subjects || [{ name: 'Physics', maxMarks: 100 }, { name: 'Chemistry', maxMarks: 100 }, { name: 'Mathematics', maxMarks: 100 }],
@@ -478,7 +581,7 @@ export const ErpDataProvider: React.FC<{ children: React.ReactNode }> = ({ child
       batchName: 'JEE-A',
       subject: doubtData.subject,
       question: doubtData.question,
-      date: new Date().toISOString().split('T')[0],
+      date: getTodayDateString(),
       status: 'open',
     };
     setDoubts(prev => [newDoubt, ...prev]);
@@ -494,7 +597,7 @@ export const ErpDataProvider: React.FC<{ children: React.ReactNode }> = ({ child
               status: 'answered',
               answer,
               answeredBy: currentUser?.name || 'Faculty Member',
-              answeredDate: new Date().toISOString().split('T')[0],
+              answeredDate: getTodayDateString(),
             }
           : d
       )
@@ -504,6 +607,7 @@ export const ErpDataProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const addHomework = (hwData: Partial<HomeworkItem>) => {
     const batch = batches.find(b => b.id === hwData.batchId) || batches[0];
+    const today = getTodayDateString();
     const newHw: HomeworkItem = {
       id: `hw-${Date.now()}`,
       batchId: batch.id,
@@ -512,7 +616,7 @@ export const ErpDataProvider: React.FC<{ children: React.ReactNode }> = ({ child
       facultyName: currentUser?.name || 'Dr. Rahul Sharma',
       title: hwData.title || 'Weekly Practice DPP',
       description: hwData.description || 'Solve provided problem set.',
-      assignedDate: new Date().toISOString().split('T')[0],
+      assignedDate: today,
       dueDate: hwData.dueDate || new Date(Date.now() + 86400000 * 3).toISOString().split('T')[0],
       submissionsCount: 0,
       totalStudents: batch.studentCount,
@@ -531,7 +635,7 @@ export const ErpDataProvider: React.FC<{ children: React.ReactNode }> = ({ child
       fileName: docData.fileName || 'uploaded_document.pdf',
       fileSize: '1.4 MB',
       uploadedBy: currentUser?.name || 'System User',
-      uploadDate: new Date().toISOString().split('T')[0],
+      uploadDate: getTodayDateString(),
       status: 'pending',
     };
     setDocuments(prev => [newDoc, ...prev]);
@@ -559,7 +663,7 @@ export const ErpDataProvider: React.FC<{ children: React.ReactNode }> = ({ child
       locationRoom: assetData.locationRoom || 'Main Campus',
       condition: assetData.condition || 'good',
       status: assetData.status || 'available',
-      purchaseDate: new Date().toISOString().split('T')[0],
+      purchaseDate: getTodayDateString(),
       estimatedValue: assetData.estimatedValue || 25000,
     };
     setAssets(prev => [newAsset, ...prev]);

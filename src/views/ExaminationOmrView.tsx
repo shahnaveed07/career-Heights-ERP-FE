@@ -15,6 +15,7 @@ import {
 import { useErpData } from '../context/ErpDataContext';
 import { useAuth } from '../context/AuthContext';
 import { ExamTest, TestResult } from '../types';
+import { getFutureDateString } from '../utils/dateUtils';
 
 export const ExaminationOmrView: React.FC = () => {
   const { tests, testResults, addTest, runOmrSimulation, batches } = useErpData();
@@ -28,7 +29,7 @@ export const ExaminationOmrView: React.FC = () => {
   const [newTestForm, setNewTestForm] = useState({
     title: 'AIIMS & NEET Mock Marathon - Phase 2',
     testType: 'offline_omr' as const,
-    testDate: '2026-09-28',
+    testDate: getFutureDateString(7),
     batchId: batches[0]?.id || 'batch-1',
     totalMarks: 720,
     course: 'NEET Dropper Medical',

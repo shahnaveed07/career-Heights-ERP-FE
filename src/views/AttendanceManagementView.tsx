@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   CalendarCheck,
   Search,
@@ -16,15 +16,30 @@ import {
 import { useErpData } from '../context/ErpDataContext';
 import { useAuth } from '../context/AuthContext';
 import { AttendanceStatus } from '../types';
+import { getTodayDateString } from '../utils/dateUtils';
+import { StudentAvatar } from '../components/common/StudentAvatar';
 
 export const AttendanceManagementView: React.FC = () => {
-  const { students, batches, branches, attendanceRecords, markStudentAttendance, employees } = useErpData();
+  const { students, batches, branches, attendanceRecords, markStudentAttendance, markBatchAttendance, employees } = useErpData();
   const { activeBranchFilter } = useAuth();
 
   const [activeTab, setActiveTab] = useState<'students' | 'faculty' | 'low_attendance'>('students');
-  const [selectedBatchId, setSelectedBatchId] = useState<string>(batches[0]?.id || 'batch-jee-a');
-  const [selectedDate, setSelectedDate] = useState<string>('2026-09-20');
+
+  // Filter batches by active branch
+  const availableBatches = activeBranchFilter === 'all'
+    ? batches
+    : batches.filter(b => b.branchId === activeBranchFilter);
+
+  const [selectedBatchId, setSelectedBatchId] = useState<string>(availableBatches[0]?.id || batches[0]?.id || 'batch-jee-a');
+  const [selectedDate, setSelectedDate] = useState<string>(getTodayDateString());
   const [alertSentMessage, setAlertSentMessage] = useState<string | null>(null);
+
+  // Synchronize selected batch if active branch filter changes
+  useEffect(() => {
+    if (availableBatches.length > 0 && !availableBatches.some(b => b.id === selectedBatchId)) {
+      setSelectedBatchId(availableBatches[0].id);
+    }
+  }, [activeBranchFilter, availableBatches, selectedBatchId]);
 
   const activeBatch = batches.find(b => b.id === selectedBatchId);
   const batchStudents = students.filter(s => s.batchId === selectedBatchId);
@@ -32,7 +47,7 @@ export const AttendanceManagementView: React.FC = () => {
   // Helper to get status of student on selected date
   const getStudentStatus = (studentId: string): AttendanceStatus => {
     const rec = attendanceRecords.find(r => r.studentId === studentId && r.date === selectedDate);
-    return rec ? rec.status : 'present'; // default present
+    return rec ? rec.status : 'present';
   };
 
   const handleToggleStatus = (studentId: string, status: AttendanceStatus) => {
@@ -40,19 +55,31 @@ export const AttendanceManagementView: React.FC = () => {
   };
 
   const handleMarkAll = (status: AttendanceStatus) => {
-    batchStudents.forEach(s => {
-      markStudentAttendance(s.id, selectedDate, status);
-    });
+    if (activeBatch) {
+      markBatchAttendance(activeBatch.id, selectedDate, status);
+    } else {
+      batchStudents.forEach(s => {
+        markStudentAttendance(s.id, selectedDate, status);
+      });
+    }
   };
 
   const handleSendAbsenteeAlerts = () => {
     const absentees = batchStudents.filter(s => getStudentStatus(s.id) === 'absent');
-    setAlertSentMessage(`Automated SMS & WhatsApp absence alerts dispatched to parents of ${absentees.length} students in ${activeBatch?.name}.`);
+    setAlertSentMessage(`Automated SMS & WhatsApp absence alerts dispatched to parents of ${absentees.length} students in ${activeBatch?.name || 'batch'}.`);
     setTimeout(() => setAlertSentMessage(null), 5000);
   };
 
-  const criticalAttendanceStudents = students.filter(s => s.attendanceRate < 75);
-  const warningAttendanceStudents = students.filter(s => s.attendanceRate >= 75 && s.attendanceRate < 80);
+  const filteredStudents = activeBranchFilter === 'all'
+    ? students
+    : students.filter(s => s.branchId === activeBranchFilter);
+
+  const filteredEmployees = activeBranchFilter === 'all'
+    ? employees
+    : employees.filter(e => e.branchId === activeBranchFilter);
+
+  const criticalAttendanceStudents = filteredStudents.filter(s => s.attendanceRate < 75);
+  const warningAttendanceStudents = filteredStudents.filter(s => s.attendanceRate >= 75 && s.attendanceRate < 80);
 
   return (
     <div className="space-y-6">
@@ -121,7 +148,7 @@ export const AttendanceManagementView: React.FC = () => {
                   onChange={e => setSelectedBatchId(e.target.value)}
                   className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-800 focus:outline-hidden"
                 >
-                  {batches.map(b => (
+                  {availableBatches.map(b => (
                     <option key={b.id} value={b.id}>
                       {b.branchName}: {b.name} ({b.timing})
                     </option>
@@ -193,7 +220,7 @@ export const AttendanceManagementView: React.FC = () => {
                         <td className="py-2.5 px-4 font-mono font-bold text-blue-900">{student.studentId}</td>
                         <td className="py-2.5 px-4">
                           <div className="flex items-center gap-2.5">
-                            <img src={student.photo} alt={student.name} className="h-7 w-7 rounded-full object-cover" />
+                            <StudentAvatar photo={student.photo} name={student.name} size="sm" />
                             <span className="font-bold text-slate-900">{student.name}</span>
                           </div>
                         </td>
@@ -276,7 +303,7 @@ export const AttendanceManagementView: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {employees.map(emp => (
+                {filteredEmployees.map(emp => (
                   <tr key={emp.id} className="hover:bg-slate-50 transition">
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-2">
@@ -344,7 +371,10 @@ export const AttendanceManagementView: React.FC = () => {
                     <td className="py-3 px-4 text-center text-slate-500 font-semibold">14 Days</td>
                     <td className="py-3 px-4 text-right">
                       <button
-                        onClick={() => alert(`Parent meeting summons letter generated for ${student.name} (${student.parentPhone})`)}
+                        onClick={() => {
+                          setAlertSentMessage(`Parent meeting summons letter generated for ${student.name} (${student.parentPhone})`);
+                          setTimeout(() => setAlertSentMessage(null), 5000);
+                        }}
                         className="rounded-lg bg-red-600 px-3 py-1 text-xs font-bold text-white hover:bg-red-700"
                       >
                         Summon Guardian

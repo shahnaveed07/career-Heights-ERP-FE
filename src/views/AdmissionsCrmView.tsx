@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   UserPlus,
   Phone,
@@ -20,6 +20,7 @@ import {
 import { useErpData } from '../context/ErpDataContext';
 import { useAuth } from '../context/AuthContext';
 import { Enquiry, LeadStatus } from '../types';
+import { getTodayDateString, getFutureDateString, isPastOrToday } from '../utils/dateUtils';
 
 export const AdmissionsCrmView: React.FC = () => {
   const { enquiries, addEnquiry, updateEnquiryStatus, convertEnquiryToAdmission, branches } = useErpData();
@@ -29,6 +30,14 @@ export const AdmissionsCrmView: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedBranch, setSelectedBranch] = useState<string>(activeBranchFilter === 'all' ? 'all' : activeBranchFilter);
   const [selectedSource, setSelectedSource] = useState<string>('all');
+  const [formError, setFormError] = useState<string | null>(null);
+
+  // Synchronize branch filter
+  useEffect(() => {
+    if (activeBranchFilter !== 'all') {
+      setSelectedBranch(activeBranchFilter);
+    }
+  }, [activeBranchFilter]);
 
   // New Lead Modal
   const [showAddModal, setShowAddModal] = useState(false);
@@ -41,7 +50,7 @@ export const AdmissionsCrmView: React.FC = () => {
     targetCourse: 'NEET Dropper Medical',
     source: 'Walk-in' as const,
     assignedCounsellor: 'Mehak Khan',
-    nextFollowUp: '2026-09-22',
+    nextFollowUp: getFutureDateString(2),
     notes: '',
   });
 
@@ -80,17 +89,18 @@ export const AdmissionsCrmView: React.FC = () => {
 
   const handleAddSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newLeadForm.name || !newLeadForm.phone) {
-      alert('Name and phone are required.');
+    if (!newLeadForm.name.trim() || !newLeadForm.phone.trim()) {
+      setFormError('Candidate name and valid phone number are required.');
       return;
     }
 
     addEnquiry({
       ...newLeadForm,
-      date: new Date().toISOString().split('T')[0],
+      date: getTodayDateString(),
       status: 'new',
     });
 
+    setFormError(null);
     setShowAddModal(false);
     setNewLeadForm({
       name: '',
@@ -101,7 +111,7 @@ export const AdmissionsCrmView: React.FC = () => {
       targetCourse: 'NEET Dropper Medical',
       source: 'Walk-in',
       assignedCounsellor: 'Mehak Khan',
-      nextFollowUp: '2026-09-22',
+      nextFollowUp: getFutureDateString(2),
       notes: '',
     });
   };
@@ -184,7 +194,7 @@ export const AdmissionsCrmView: React.FC = () => {
         <div className="rounded-xl border border-slate-200 bg-white p-3.5 shadow-xs">
           <span className="text-[11px] font-semibold text-slate-500">Today's Follow-ups</span>
           <div className="mt-1 text-2xl font-black text-amber-700">
-            {filteredEnquiries.filter(e => e.status !== 'admission' && e.status !== 'lost' && e.nextFollowUp <= '2026-09-20').length}
+            {filteredEnquiries.filter(e => e.status !== 'admission' && e.status !== 'lost' && isPastOrToday(e.nextFollowUp)).length}
           </div>
           <span className="text-[10px] text-amber-800 font-semibold">Immediate attention</span>
         </div>
@@ -454,6 +464,12 @@ export const AdmissionsCrmView: React.FC = () => {
             </div>
 
             <form onSubmit={handleAddSubmit} className="mt-4 space-y-3 text-xs">
+              {formError && (
+                <div className="rounded-lg bg-red-50 border border-red-200 p-2.5 text-xs text-red-700 font-semibold flex items-center gap-2">
+                  <AlertCircle className="h-4 w-4 shrink-0 text-red-600" />
+                  <span>{formError}</span>
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block font-semibold text-slate-700 mb-1">Student Name *</label>

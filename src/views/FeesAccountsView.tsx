@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   CreditCard,
   Search,
@@ -7,10 +7,12 @@ import {
   CheckCircle2,
   Send,
   X,
+  AlertCircle,
 } from 'lucide-react';
 import { useErpData } from '../context/ErpDataContext';
 import { useAuth } from '../context/AuthContext';
 import { FeeReceipt } from '../types';
+import { StudentAvatar } from '../components/common/StudentAvatar';
 
 export const FeesAccountsView: React.FC = () => {
   const { students, feeReceipts, recordFeePayment, branches } = useErpData();
@@ -19,6 +21,14 @@ export const FeesAccountsView: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedBranch, setSelectedBranch] = useState(activeBranchFilter === 'all' ? 'all' : activeBranchFilter);
   const [statusFilter, setStatusFilter] = useState<'all' | 'overdue' | 'pending' | 'cleared'>('all');
+  const [actionMessage, setActionMessage] = useState<string | null>(null);
+
+  // Synchronize branch selection with global filter
+  useEffect(() => {
+    if (activeBranchFilter !== 'all') {
+      setSelectedBranch(activeBranchFilter);
+    }
+  }, [activeBranchFilter]);
 
   // Record Payment Modal State
   const [showPayModal, setShowPayModal] = useState(false);
@@ -48,16 +58,20 @@ export const FeesAccountsView: React.FC = () => {
     return searchMatch && branchMatch && statusMatch;
   });
 
-  const totalBilled = students.reduce((acc, s) => acc + s.feesTotal, 0);
-  const totalCollected = students.reduce((acc, s) => acc + s.feesPaid, 0);
-  const totalPending = students.reduce((acc, s) => acc + s.feesPending, 0);
-  const totalOverdue = students.reduce((acc, s) => acc + s.feesOverdue, 0);
+  const branchScopedStudents = selectedBranch === 'all'
+    ? students
+    : students.filter(s => s.branchId === selectedBranch);
+
+  const totalBilled = branchScopedStudents.reduce((acc, s) => acc + s.feesTotal, 0);
+  const totalCollected = branchScopedStudents.reduce((acc, s) => acc + s.feesPaid, 0);
+  const totalPending = branchScopedStudents.reduce((acc, s) => acc + s.feesPending, 0);
+  const totalOverdue = branchScopedStudents.reduce((acc, s) => acc + s.feesOverdue, 0);
   const recoveryRate = totalBilled > 0 ? ((totalCollected / totalBilled) * 100).toFixed(1) : '0';
 
   const handleRecordPaymentSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!targetStudentId || paymentAmount <= 0) {
-      alert('Please specify student and valid amount.');
+      setActionMessage('Please select a student and enter a valid amount.');
       return;
     }
 
@@ -72,12 +86,15 @@ export const FeesAccountsView: React.FC = () => {
     setShowPayModal(false);
     if (createdReceipt) {
       setReceiptToPrint(createdReceipt);
+      setActionMessage(`Receipt ${createdReceipt.receiptNo} generated successfully for ₹${createdReceipt.amount.toLocaleString()}.`);
+      setTimeout(() => setActionMessage(null), 5000);
     }
   };
 
   const handleTriggerDueReminders = () => {
-    const overdueList = students.filter(s => s.feesOverdue > 0);
-    alert(`Automated SMS fee reminders successfully sent to parents of ${overdueList.length} students with overdue accounts.`);
+    const overdueList = branchScopedStudents.filter(s => s.feesOverdue > 0);
+    setActionMessage(`Automated SMS fee reminders successfully sent to parents of ${overdueList.length} students with overdue accounts.`);
+    setTimeout(() => setActionMessage(null), 5000);
   };
 
   return (
@@ -104,7 +121,7 @@ export const FeesAccountsView: React.FC = () => {
             className="flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-bold text-red-700 hover:bg-red-100 transition shadow-2xs"
           >
             <Send className="h-3.5 w-3.5" />
-            <span>Remind Overdue ({students.filter(s => s.feesOverdue > 0).length})</span>
+            <span>Remind Overdue ({branchScopedStudents.filter(s => s.feesOverdue > 0).length})</span>
           </button>
 
           <button
@@ -116,6 +133,13 @@ export const FeesAccountsView: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {actionMessage && (
+        <div className="flex items-center gap-2 rounded-xl bg-emerald-50 border border-emerald-200 p-3.5 text-xs font-bold text-emerald-800 shadow-2xs">
+          <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+          <span>{actionMessage}</span>
+        </div>
+      )}
 
       {/* Financial KPIs Row */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -203,7 +227,7 @@ export const FeesAccountsView: React.FC = () => {
                 <tr key={student.id} className="hover:bg-slate-50 transition">
                   <td className="py-3 px-4">
                     <div className="flex items-center gap-2.5">
-                      <img src={student.avatar} alt={student.name} className="h-7 w-7 rounded-full object-cover" />
+                      <StudentAvatar photo={student.photo || (student as any).avatar} name={student.name} size="sm" />
                       <div>
                         <p className="font-bold text-slate-900">{student.name}</p>
                         <p className="font-mono text-[10px] text-blue-900">{student.studentCode}</p>
@@ -293,7 +317,13 @@ export const FeesAccountsView: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {feeReceipts.map(rcpt => (
+              {feeReceipts
+                .filter(rcpt => {
+                  if (selectedBranch === 'all') return true;
+                  const st = students.find(s => s.id === rcpt.studentId);
+                  return st ? st.branchId === selectedBranch : true;
+                })
+                .map(rcpt => (
                 <tr key={rcpt.id} className="hover:bg-slate-50 transition">
                   <td className="py-2.5 px-4 font-mono font-bold text-blue-900">{rcpt.receiptNo}</td>
                   <td className="py-2.5 px-4 font-bold text-slate-800">{rcpt.studentName}</td>

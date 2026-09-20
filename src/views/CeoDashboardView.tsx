@@ -23,6 +23,8 @@ import {
 import { useErpData } from '../context/ErpDataContext';
 import { useAuth } from '../context/AuthContext';
 import { Student, Branch, Wing, ClassItem, Batch } from '../types';
+import { isToday, isPastOrToday, isCurrentAcademicYear, getTodayDateString } from '../utils/dateUtils';
+import { StudentAvatar } from '../components/common/StudentAvatar';
 
 interface CeoDashboardViewProps {
   onNavigateToStudent?: (studentId: string) => void;
@@ -60,24 +62,45 @@ export const CeoDashboardView: React.FC<CeoDashboardViewProps> = ({
     ? students
     : students.filter(s => s.branchId === activeBranchFilter);
 
+  const filteredEnquiries = activeBranchFilter === 'all'
+    ? enquiries
+    : enquiries.filter(e => e.branchId === activeBranchFilter);
+
+  const filteredReceipts = activeBranchFilter === 'all'
+    ? feeReceipts
+    : feeReceipts.filter(r => {
+        const student = students.find(s => s.id === r.studentId);
+        if (student) return student.branchId === activeBranchFilter;
+        const targetBranch = branches.find(b => b.id === activeBranchFilter);
+        return targetBranch ? r.branchName === targetBranch.name : true;
+      });
+
+  const filteredBranches = activeBranchFilter === 'all'
+    ? branches
+    : branches.filter(b => b.id === activeBranchFilter);
+
+  const filteredEmployees = activeBranchFilter === 'all'
+    ? employees
+    : employees.filter(e => e.branchId === activeBranchFilter);
+
   // High-level Metrics Calculation
   const totalStudents = filteredStudents.length;
-  const newAdmissions = filteredStudents.filter(s => s.admissionDate?.startsWith('2026') || s.status === 'active').length;
-  const todayEnquiries = enquiries.filter(e => e.date === '2026-09-20').length;
-  const totalEnquiriesCount = enquiries.length;
-  const convertedEnquiries = enquiries.filter(e => e.status === 'admission').length;
-  const admissionConversionRate = totalEnquiriesCount > 0 ? ((convertedEnquiries / totalEnquiriesCount) * 100).toFixed(1) : '28.4';
+  const newAdmissions = filteredStudents.filter(s => isCurrentAcademicYear(s.admissionDate)).length;
+  const todayEnquiries = filteredEnquiries.filter(e => isToday(e.date)).length;
+  const totalEnquiriesCount = filteredEnquiries.length;
+  const convertedEnquiries = filteredEnquiries.filter(e => e.status === 'admission').length;
+  const admissionConversionRate = totalEnquiriesCount > 0 ? ((convertedEnquiries / totalEnquiriesCount) * 100).toFixed(1) : '0.0';
 
-  const todayReceipts = feeReceipts.filter(r => r.date === '2026-09-20');
-  const todayCollection = todayReceipts.reduce((sum, r) => sum + r.amount, 0) || 57500;
+  const todayReceipts = filteredReceipts.filter(r => isToday(r.date));
+  const todayCollection = todayReceipts.reduce((sum, r) => sum + r.amount, 0);
   const outstandingFees = filteredStudents.reduce((sum, s) => sum + s.feesPending, 0);
 
   const avgAttendance = filteredStudents.length > 0
     ? (filteredStudents.reduce((sum, s) => sum + s.attendanceRate, 0) / filteredStudents.length).toFixed(1)
-    : '85.4';
+    : '0.0';
 
   const totalTestsConducted = tests.length;
-  const activeFacultyCount = employees.filter(e => e.role === 'faculty' && e.status === 'active').length;
+  const activeFacultyCount = filteredEmployees.filter(e => e.role === 'faculty' && e.status === 'active').length;
   const pendingDocsCount = documents.filter(d => d.status === 'pending').length;
 
   // Attention Required Categorizations
@@ -87,7 +110,7 @@ export const CeoDashboardView: React.FC<CeoDashboardViewProps> = ({
 
   const lowAttendanceStudents = filteredStudents.filter(s => s.attendanceRate >= 75 && s.attendanceRate < 80);
   const pendingDocStudents = filteredStudents.filter(s => s.pendingDocuments > 0);
-  const followUpDueEnquiries = enquiries.filter(e => e.status !== 'admission' && e.status !== 'lost' && e.nextFollowUp <= '2026-09-21');
+  const followUpDueEnquiries = filteredEnquiries.filter(e => e.status !== 'admission' && e.status !== 'lost' && isPastOrToday(e.nextFollowUp));
 
   // Active entities for drill-down
   const activeBranch = branches.find(b => b.id === selectedBranchId);
@@ -201,9 +224,9 @@ export const CeoDashboardView: React.FC<CeoDashboardViewProps> = ({
           <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3.5">
             <span className="text-[11px] font-semibold text-slate-500">Today's Enquiries</span>
             <div className="mt-1 flex items-baseline justify-between">
-              <span className="text-2xl font-black text-amber-700">{todayEnquiries || 3}</span>
+              <span className="text-2xl font-black text-amber-700">{todayEnquiries}</span>
               <span className="flex items-center text-[10px] font-bold text-emerald-700">
-                <ArrowUpRight className="h-3 w-3" /> +2
+                <ArrowUpRight className="h-3 w-3" /> Live
               </span>
             </div>
             <p className="mt-1 text-[10px] text-slate-400">Walk-in &amp; Telephonic</p>
@@ -226,7 +249,7 @@ export const CeoDashboardView: React.FC<CeoDashboardViewProps> = ({
               <span className="text-2xl font-black text-emerald-800">₹{(todayCollection / 1000).toFixed(1)}k</span>
               <span className="text-[10px] font-bold text-emerald-700">Verified</span>
             </div>
-            <p className="mt-1 text-[10px] text-slate-400">3 official receipts issued</p>
+            <p className="mt-1 text-[10px] text-slate-400">{todayReceipts.length} official receipt{todayReceipts.length === 1 ? '' : 's'} issued</p>
           </div>
 
           {/* 6. Outstanding Fees */}
@@ -794,11 +817,7 @@ export const CeoDashboardView: React.FC<CeoDashboardViewProps> = ({
                         <td className="py-2.5 px-3 font-mono font-bold text-blue-900">{s.studentId}</td>
                         <td className="py-2.5 px-3">
                           <div className="flex items-center gap-2">
-                            <img
-                              src={s.photo}
-                              alt={s.name}
-                              className="h-6 w-6 rounded-full object-cover"
-                            />
+                            <StudentAvatar photo={s.photo} name={s.name} size="xs" />
                             <span className="font-bold text-slate-900">{s.name}</span>
                           </div>
                         </td>
