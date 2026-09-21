@@ -15,7 +15,8 @@ import { StudentAvatar } from '../components/common/StudentAvatar';
 import { generateNextTransactionRef } from '../utils/idGenerators';
 export const FeesAccountsView = () => {
   const { students, feeReceipts, recordFeePayment, branches } = useErpData();
-  const { activeBranchFilter, setActiveBranchFilter } = useAuth();
+  const { activeBranchFilter, setActiveBranchFilter, uiMode, can } = useAuth();
+  const canEditFees = uiMode !== 'view' && can('fees', 'edit');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedBranch, setSelectedBranch] = useState(
     activeBranchFilter === 'all' ? 'all' : activeBranchFilter
@@ -183,13 +184,19 @@ export const FeesAccountsView = () => {
             </span>
           </button>
 
-          <button
-            onClick={() => openRecordPaymentModal()}
-            className="flex items-center gap-1.5 rounded-lg bg-blue-900 px-3.5 py-2 text-xs font-bold text-white shadow-xs hover:bg-blue-800 transition"
-          >
-            <Plus className="h-4 w-4" />
-            <span>Record Payment</span>
-          </button>
+          {canEditFees ? (
+            <button
+              onClick={() => openRecordPaymentModal()}
+              className="flex items-center gap-1.5 rounded-lg bg-blue-900 px-3.5 py-2 text-xs font-bold text-white shadow-xs hover:bg-blue-800 transition"
+            >
+              <Plus className="h-4 w-4" />
+              <span>Record Payment</span>
+            </button>
+          ) : (
+            <span className="rounded-lg bg-slate-100 border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-500">
+              Payment Locked (View Mode)
+            </span>
+          )}
         </div>
       </div>
 

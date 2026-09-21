@@ -5,6 +5,10 @@ import {
   INITIAL_WINGS,
   INITIAL_CLASSES,
   INITIAL_BATCHES,
+  INITIAL_SUBJECTS,
+  INITIAL_SUBJECT_COMBOS,
+  INITIAL_TEACHER_ASSIGNMENTS,
+  INITIAL_CUSTOM_ROLES,
   INITIAL_ENQUIRIES,
   INITIAL_FEE_RECEIPTS,
   INITIAL_TESTS,
@@ -61,6 +65,46 @@ export const ErpDataProvider = ({ children }) => {
   const [attendanceRecords, setAttendanceRecords] = useState(() => {
     return generateInitialAttendanceRecords(INITIAL_STUDENTS);
   });
+
+  // Academic Master State
+  const [subjects, setSubjects] = useState(INITIAL_SUBJECTS);
+  const [subjectCombos, setSubjectCombos] = useState(INITIAL_SUBJECT_COMBOS);
+  const [teacherAssignments, setTeacherAssignments] = useState(INITIAL_TEACHER_ASSIGNMENTS);
+  const [customRoles, setCustomRoles] = useState(INITIAL_CUSTOM_ROLES);
+  const [salaries, setSalaries] = useState(() => {
+    return INITIAL_STAFF.map((emp, idx) => ({
+      id: `sal-${emp.id}-2026-02`,
+      employeeId: emp.id,
+      employeeName: emp.name,
+      empCode: emp.empCode,
+      designation: emp.designation,
+      branchId: emp.branchId,
+      branchName: emp.branchName,
+      month: 'February 2026',
+      baseSalary: emp.salary || 65000,
+      allowance: 3500,
+      deductions: 1200,
+      netSalary: (emp.salary || 65000) + 3500 - 1200,
+      status: idx % 3 === 0 ? 'Pending' : 'Paid',
+      paidDate: idx % 3 === 0 ? null : '2026-02-28',
+      paymentMethod: idx % 3 === 0 ? null : 'Direct Bank Transfer',
+      transactionRef: idx % 3 === 0 ? null : `NEFT-2026-${1000 + idx}`,
+    }));
+  });
+  const [teacherAttendanceRecords, setTeacherAttendanceRecords] = useState([
+    {
+      id: 't-att-001',
+      teacherId: 'u-faculty',
+      teacherName: 'Dr. Rahul Sharma',
+      date: getTodayDateString(),
+      checkInTime: '08:45 AM',
+      checkOutTime: null,
+      status: 'Present',
+      location: 'Handwara Main Campus (34.3980° N, 74.2831° E)',
+      accuracyMeters: 12,
+      deviceInfo: 'Staff Mobile / Verified Campus GeoFence',
+    },
+  ]);
   const addAuditLog = (action, module, details) => {
     const newLog = {
       id: `log-${Date.now()}`,
@@ -755,6 +799,189 @@ export const ErpDataProvider = ({ children }) => {
       `Sent broadcast to target "${data.target}" using template "${data.template}": ${data.message.substring(0, 60)}...`
     );
   };
+
+  const addSubject = (subjectData) => {
+    const newSubject = {
+      id: `sub-${Date.now().toString(36)}`,
+      name: subjectData.name,
+      code: subjectData.code || `${subjectData.name.slice(0, 3).toUpperCase()}-101`,
+      category: subjectData.category || 'General',
+      description: subjectData.description || '',
+      color: subjectData.color || 'blue',
+    };
+    setSubjects((prev) => [...prev, newSubject]);
+    addAuditLog('Created Subject Master', 'Academic Master', `Added subject: ${newSubject.name} (${newSubject.code})`);
+    return newSubject;
+  };
+
+  const updateSubject = (id, updatedData) => {
+    setSubjects((prev) => prev.map((s) => (s.id === id ? { ...s, ...updatedData } : s)));
+    addAuditLog('Updated Subject Master', 'Academic Master', `Updated subject #${id}`);
+  };
+
+  const deleteSubject = (id) => {
+    setSubjects((prev) => prev.filter((s) => s.id !== id));
+    addAuditLog('Deleted Subject Master', 'Academic Master', `Deleted subject #${id}`);
+  };
+
+  const addSubjectCombo = (comboData) => {
+    const newCombo = {
+      id: `combo-${Date.now().toString(36)}`,
+      name: comboData.name,
+      code: comboData.code || `COMBO-${comboData.name.slice(0, 4).toUpperCase()}`,
+      description: comboData.description || '',
+      wingId: comboData.wingId || 'w-eng',
+      subjectIds: comboData.subjectIds || [],
+    };
+    setSubjectCombos((prev) => [...prev, newCombo]);
+    addAuditLog('Created Subject Combo', 'Academic Master', `Created combo: ${newCombo.name}`);
+    return newCombo;
+  };
+
+  const updateSubjectCombo = (id, updatedData) => {
+    setSubjectCombos((prev) => prev.map((c) => (c.id === id ? { ...c, ...updatedData } : c)));
+    addAuditLog('Updated Subject Combo', 'Academic Master', `Updated subject combo #${id}`);
+  };
+
+  const deleteSubjectCombo = (id) => {
+    setSubjectCombos((prev) => prev.filter((c) => c.id !== id));
+    addAuditLog('Deleted Subject Combo', 'Academic Master', `Deleted subject combo #${id}`);
+  };
+
+  const addTeacherAssignment = (assignmentData) => {
+    const newAssignment = {
+      id: `ta-${Date.now().toString(36)}`,
+      ...assignmentData,
+    };
+    setTeacherAssignments((prev) => [...prev, newAssignment]);
+    addAuditLog(
+      'Assigned Teacher to Batch/Subject',
+      'Faculty Management',
+      `Assigned ${assignmentData.teacherName} to ${assignmentData.batchName} for ${assignmentData.subjectName}`
+    );
+    return newAssignment;
+  };
+
+  const deleteTeacherAssignment = (id) => {
+    setTeacherAssignments((prev) => prev.filter((ta) => ta.id !== id));
+    addAuditLog('Removed Teacher Assignment', 'Faculty Management', `Removed assignment #${id}`);
+  };
+
+  const updateStudentSubjectEnrollment = (studentId, subjectIds, comboId = null) => {
+    setStudents((prev) =>
+      prev.map((s) => {
+        if (s.id === studentId) {
+          return {
+            ...s,
+            enrolledSubjects: subjectIds,
+            subjectComboId: comboId,
+          };
+        }
+        return s;
+      })
+    );
+    addAuditLog(
+      'Updated Student Subject Enrollment',
+      'Student Admissions',
+      `Updated subject enrollment for student #${studentId} (${subjectIds.length} subjects)`
+    );
+  };
+
+  const addCustomRole = (roleData) => {
+    const newRole = {
+      id: `role-${Date.now().toString(36)}`,
+      name: roleData.name,
+      description: roleData.description || '',
+      status: roleData.status || 'active',
+      assignedBranchIds: roleData.assignedBranchIds || ['all'],
+      permissions: roleData.permissions || {},
+      createdBy: currentUser?.name || 'Authorized Admin',
+      createdAt: getTodayDateString(),
+    };
+    setCustomRoles((prev) => [...prev, newRole]);
+    addAuditLog('Created Custom RBAC Role', 'Security & Roles', `Created role: ${newRole.name}`);
+    return newRole;
+  };
+
+  const updateCustomRole = (id, updatedData) => {
+    setCustomRoles((prev) => prev.map((r) => (r.id === id ? { ...r, ...updatedData } : r)));
+    addAuditLog('Updated Custom Role', 'Security & Roles', `Updated permissions for role #${id}`);
+  };
+
+  const deleteCustomRole = (id) => {
+    setCustomRoles((prev) => prev.filter((r) => r.id !== id));
+    addAuditLog('Deleted Custom Role', 'Security & Roles', `Deleted role #${id}`);
+  };
+
+  const payStaffSalary = (salaryId, paymentDetails = {}) => {
+    const today = getTodayDateString();
+    const txRef = paymentDetails.transactionRef || `SAL-TX-${Date.now().toString().slice(-6)}`;
+    setSalaries((prev) =>
+      prev.map((sal) => {
+        if (sal.id === salaryId) {
+          return {
+            ...sal,
+            status: 'Paid',
+            paidDate: today,
+            paymentMethod: paymentDetails.paymentMethod || 'Direct Bank Transfer',
+            transactionRef: txRef,
+            notes: paymentDetails.notes || 'Disbursed via ERP payroll',
+          };
+        }
+        return sal;
+      })
+    );
+    addAuditLog(
+      'Disbursed Employee Salary',
+      'Finance & Payroll',
+      `Processed payroll disbursement #${salaryId} via ${paymentDetails.paymentMethod || 'Bank Transfer'}. Ref: ${txRef}`
+    );
+  };
+
+  const markTeacherSelfAttendance = (teacherId, data = {}) => {
+    const today = getTodayDateString();
+    const existing = teacherAttendanceRecords.find(
+      (r) => r.teacherId === teacherId && r.date === today
+    );
+    if (existing) {
+      setTeacherAttendanceRecords((prev) =>
+        prev.map((r) =>
+          r.id === existing.id
+            ? {
+                ...r,
+                checkOutTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                status: 'Present (Checked Out)',
+              }
+            : r
+        )
+      );
+      addAuditLog('Faculty Check-Out', 'Attendance System', `Faculty ${teacherId} clocked out.`);
+    } else {
+      const newRec = {
+        id: `t-att-${Date.now().toString(36)}`,
+        teacherId,
+        teacherName: currentUser?.name || 'Dr. Rahul Sharma',
+        date: today,
+        checkInTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        checkOutTime: null,
+        status: 'Present',
+        location: data.location || 'Handwara Main Campus (34.3980° N, 74.2831° E)',
+        accuracyMeters: data.accuracyMeters || 10,
+        deviceInfo: data.deviceInfo || 'Staff Device / Campus WiFi & GPS Verified',
+      };
+      setTeacherAttendanceRecords((prev) => [newRec, ...prev]);
+      addAuditLog('Faculty Self-Attendance', 'Attendance System', `Faculty ${teacherId} checked in at campus.`);
+    }
+  };
+
+  const getTeacherAssignedStudents = (teacherId, batchId, subjectId) => {
+    return students.filter((st) => {
+      const matchBatch = !batchId || st.batchId === batchId;
+      const enrolled = Array.isArray(st.enrolledSubjects) && st.enrolledSubjects.includes(subjectId);
+      return matchBatch && enrolled;
+    });
+  };
+
   return (
     <ErpDataContext.Provider
       value={{
@@ -763,6 +990,12 @@ export const ErpDataProvider = ({ children }) => {
         classes,
         batches,
         students,
+        subjects,
+        subjectCombos,
+        teacherAssignments,
+        customRoles,
+        salaries,
+        teacherAttendanceRecords,
         enquiries,
         feeReceipts,
         tests,
@@ -782,6 +1015,21 @@ export const ErpDataProvider = ({ children }) => {
         attendanceRecords,
         addStudent,
         updateStudent,
+        updateStudentSubjectEnrollment,
+        addSubject,
+        updateSubject,
+        deleteSubject,
+        addSubjectCombo,
+        updateSubjectCombo,
+        deleteSubjectCombo,
+        addTeacherAssignment,
+        deleteTeacherAssignment,
+        addCustomRole,
+        updateCustomRole,
+        deleteCustomRole,
+        payStaffSalary,
+        markTeacherSelfAttendance,
+        getTeacherAssignedStudents,
         addEnquiry,
         updateEnquiryStatus,
         convertEnquiryToAdmission,

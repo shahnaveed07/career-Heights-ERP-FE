@@ -23,8 +23,15 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { useErpData } from '../../context/ErpDataContext';
 export const Sidebar = ({ activeModule, onSelectModule, isOpen, onClose }) => {
-  const { currentUser } = useAuth();
+  const { currentUser, can, activeBranchFilter } = useAuth();
   const { students, enquiries, documents, doubts, branches } = useErpData();
+
+  const currentBranch = branches.find((b) => b.id === activeBranchFilter);
+  const activeBranchDisplay =
+    activeBranchFilter === 'all'
+      ? 'HQ Central (All 5 Branches)'
+      : `${currentBranch?.name || currentUser?.branchName || 'Handwara'} Campus`;
+
   const pendingDocsCount = documents.filter(
     (d) => d.status === 'pending'
   ).length;
@@ -259,23 +266,21 @@ export const Sidebar = ({ activeModule, onSelectModule, isOpen, onClose }) => {
               Live Sync
             </span>
           </div>
-          <p className="mt-1 text-xs font-bold text-slate-800 truncate">
-            {currentUser?.role === 'ceo' || currentUser?.role === 'hq_admin'
-              ? 'Career Heights HQ (Central)'
-              : `${currentUser?.branchName || 'Handwara'} Campus`}
+          <p className="mt-1 text-xs font-bold text-slate-800 truncate" title={activeBranchDisplay}>
+            {activeBranchDisplay}
           </p>
           <p className="text-[10px] text-slate-500">
-            Tier: Centralized Multi-Branch
+            Tier: Centralized Multi-Branch ERP
           </p>
         </div>
 
         {/* Navigation Items List */}
         <div className="flex-1 overflow-y-auto px-3 py-3 space-y-6">
           {sections.map((section, idx) => {
-            const visibleItems = section.items.filter(
-              (item) =>
-                !item.roles || item.roles.includes(currentUser?.role || '')
-            );
+            const visibleItems = section.items.filter((item) => {
+              if (item.id === 'dashboard') return true;
+              return can(item.id, 'view');
+            });
             if (visibleItems.length === 0) return null;
             return (
               <div key={idx} className="space-y-1">

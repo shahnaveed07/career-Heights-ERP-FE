@@ -1,8 +1,12 @@
 import { useState } from 'react';
-import { Building, Plus, MapPin, X } from 'lucide-react';
+import { Building, Plus, MapPin, X, Check, CheckCircle2 } from 'lucide-react';
 import { useErpData } from '../context/ErpDataContext';
+import { useAuth } from '../context/AuthContext';
+
 export const BranchManagementView = () => {
   const { branches, addBranch } = useErpData();
+  const { activeBranchFilter, setActiveBranchFilter, uiMode, can } = useAuth();
+  const canCreateBranch = uiMode !== 'view' && can('branches', 'create');
   const [showAddModal, setShowAddModal] = useState(false);
   const [newBranchForm, setNewBranchForm] = useState({
     name: '',
@@ -52,18 +56,53 @@ export const BranchManagementView = () => {
           </p>
         </div>
 
-        <button
-          onClick={() => setShowAddModal(true)}
-          className="flex items-center gap-1.5 rounded-lg bg-blue-900 px-3.5 py-2 text-xs font-bold text-white hover:bg-blue-800 transition shadow-xs"
-        >
-          <Plus className="h-4 w-4" />
-          <span>Provision New Campus</span>
-        </button>
+        <div>
+          <button
+            onClick={() => setActiveBranchFilter('all')}
+            className={`mr-2 rounded-lg border px-3 py-2 text-xs font-bold transition shadow-xs ${activeBranchFilter === 'all' ? 'bg-blue-900 text-white border-blue-900' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'}`}
+          >
+            All Campuses (Consolidated)
+          </button>
+          {canCreateBranch ? (
+            <button
+              onClick={() => setShowAddModal(true)}
+              className="flex-inline items-center gap-1.5 rounded-lg bg-blue-900 px-3.5 py-2 text-xs font-bold text-white hover:bg-blue-800 transition shadow-xs"
+            >
+              <Plus className="h-4 w-4 inline mr-1" />
+              <span>Provision New Campus</span>
+            </button>
+          ) : (
+            <span className="rounded-lg bg-slate-100 border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-500">
+              Branch Creation Locked (View Mode)
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Active Branch Status Banner */}
+      <div className="rounded-xl border border-blue-200 bg-blue-50/50 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+        <div>
+          <p className="font-bold text-blue-950">
+            Current Active Campus: {activeBranchFilter === 'all' ? 'Centralized Multi-Branch (All Campuses)' : `${branches.find((b) => b.id === activeBranchFilter)?.name || 'Selected'} Campus`}
+          </p>
+          <p className="text-blue-800/80 mt-0.5">
+            Single Active Branch Directive: When a campus is active, students, faculty, batches, and operations reflect that campus context.
+          </p>
+        </div>
+        {activeBranchFilter !== 'all' && (
+          <button
+            onClick={() => setActiveBranchFilter('all')}
+            className="self-start sm:self-auto shrink-0 rounded-lg bg-white border border-blue-200 px-3 py-1.5 font-bold text-blue-900 hover:bg-blue-100 shadow-2xs"
+          >
+            Switch to All Branches
+          </button>
+        )}
       </div>
 
       {/* 5 Branches Detailed Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {branches.map((branch) => {
+          const isActiveBranch = activeBranchFilter === branch.id;
           const utilRate = (
             (branch.studentCount / branch.capacity) *
             100
@@ -71,17 +110,25 @@ export const BranchManagementView = () => {
           return (
             <div
               key={branch.id}
-              className="rounded-2xl border border-slate-200 bg-white p-6 shadow-xs hover:border-blue-900 hover:shadow-md transition text-left flex flex-col justify-between"
+              className={`rounded-2xl border p-6 transition text-left flex flex-col justify-between ${isActiveBranch ? 'border-blue-900 ring-2 ring-blue-900/20 bg-blue-50/20 shadow-md' : 'border-slate-200 bg-white shadow-xs hover:border-blue-900 hover:shadow-md'}`}
             >
               <div>
                 <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                   <span className="font-mono text-xs font-bold text-blue-900 bg-blue-50 px-2 py-0.5 rounded">
                     {branch.code}
                   </span>
-                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
-                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                    Operational
-                  </span>
+                  <div className="flex items-center gap-1.5">
+                    {isActiveBranch && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-blue-900 px-2.5 py-0.5 text-[10px] font-bold text-white shadow-2xs">
+                        <Check className="h-3 w-3" />
+                        Active Focus
+                      </span>
+                    )}
+                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                      Operational
+                    </span>
+                  </div>
                 </div>
 
                 <h3 className="mt-3 text-lg font-bold text-slate-900">
@@ -149,11 +196,21 @@ export const BranchManagementView = () => {
 
               <div className="mt-5 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-semibold">
                 <span className="text-slate-500">
-                  {branch.classroomCount} Smart Classrooms
+                  {branch.classroomCount} Classrooms
                 </span>
-                <span className="text-blue-900 hover:underline cursor-pointer">
-                  Branch Audit &rarr;
-                </span>
+                {isActiveBranch ? (
+                  <span className="inline-flex items-center gap-1 text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200">
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                    Active Campus
+                  </span>
+                ) : (
+                  <button
+                    onClick={() => setActiveBranchFilter(branch.id)}
+                    className="rounded-lg bg-slate-100 px-2.5 py-1 text-blue-900 hover:bg-blue-900 hover:text-white transition shadow-2xs"
+                  >
+                    Focus Campus &rarr;
+                  </button>
+                )}
               </div>
             </div>
           );

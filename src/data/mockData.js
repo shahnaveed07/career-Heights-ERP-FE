@@ -379,6 +379,174 @@ export const INITIAL_BATCHES = [
     attendanceToday: 78.8,
   },
 ];
+
+export const INITIAL_SUBJECTS = [
+  {
+    id: 'sub-phy',
+    name: 'Physics',
+    code: 'PHY-101',
+    category: 'Science',
+    description: 'Mechanics, Electromagnetism, Modern Physics & Wave Optics',
+    color: 'blue',
+  },
+  {
+    id: 'sub-chem',
+    name: 'Chemistry',
+    code: 'CHM-101',
+    category: 'Science',
+    description: 'Physical, Organic, and Inorganic Chemistry & Thermodynamics',
+    color: 'emerald',
+  },
+  {
+    id: 'sub-math',
+    name: 'Mathematics',
+    code: 'MTH-101',
+    category: 'Mathematics',
+    description: 'Calculus, Algebra, Coordinate Geometry, Vectors & Probability',
+    color: 'amber',
+  },
+  {
+    id: 'sub-bot',
+    name: 'Botany',
+    code: 'BOT-101',
+    category: 'Biology',
+    description: 'Plant Physiology, Morphology, Genetics & Ecology',
+    color: 'green',
+  },
+  {
+    id: 'sub-zoo',
+    name: 'Zoology',
+    code: 'ZOO-101',
+    category: 'Biology',
+    description: 'Human Physiology, Animal Kingdom, Evolution & Biotechnology',
+    color: 'teal',
+  },
+  {
+    id: 'sub-bio',
+    name: 'Biology (Foundation)',
+    code: 'BIO-101',
+    category: 'Biology',
+    description: 'Life Processes, Heredity & Natural Resources for Secondary Classes',
+    color: 'emerald',
+  },
+  {
+    id: 'sub-eng',
+    name: 'English',
+    code: 'ENG-101',
+    category: 'Language',
+    description: 'Reading Comprehension, Advanced Grammar & Technical Composition',
+    color: 'violet',
+  },
+  {
+    id: 'sub-cs',
+    name: 'Computer Science',
+    code: 'CS-101',
+    category: 'Technology',
+    description: 'Python Programming, Data Structures, Boolean Logic & SQL',
+    color: 'indigo',
+  },
+];
+
+export const INITIAL_SUBJECT_COMBOS = [
+  {
+    id: 'combo-med',
+    name: 'Medical Stream (NEET)',
+    code: 'COMBO-NEET',
+    description: 'Comprehensive 4-subject package for Medical Entrance',
+    wingId: 'w-med',
+    subjectIds: ['sub-phy', 'sub-chem', 'sub-bot', 'sub-zoo'],
+  },
+  {
+    id: 'combo-eng',
+    name: 'Engineering Stream (JEE)',
+    code: 'COMBO-JEE',
+    description: 'Intensive 3-subject package for JEE Main & Advanced',
+    wingId: 'w-eng',
+    subjectIds: ['sub-phy', 'sub-chem', 'sub-math'],
+  },
+  {
+    id: 'combo-pcm-cs',
+    name: 'Engineering with Computer Science',
+    code: 'COMBO-PCM-CS',
+    description: 'Engineering track with modern CS & Programming',
+    wingId: 'w-eng',
+    subjectIds: ['sub-phy', 'sub-chem', 'sub-math', 'sub-cs'],
+  },
+  {
+    id: 'combo-fnd',
+    name: 'Foundation & Olympiad Package',
+    code: 'COMBO-FND',
+    description: 'Integrated 5-subject curriculum for Class 9 & 10 conceptual mastery',
+    wingId: 'w-fnd',
+    subjectIds: ['sub-math', 'sub-phy', 'sub-chem', 'sub-bio', 'sub-eng'],
+  },
+];
+
+export const INITIAL_TEACHER_ASSIGNMENTS = [
+  {
+    id: 'ta-001',
+    teacherId: 'u-faculty',
+    teacherName: 'Dr. Rahul Sharma',
+    branchId: 'b-hdw',
+    branchName: 'Handwara',
+    classId: 'c-11-eng',
+    className: 'Class 11 Engineering',
+    wingId: 'w-eng',
+    wingName: 'Engineering (JEE) Wing',
+    batchId: 'batch-jee-a',
+    batchName: 'JEE-A',
+    subjectId: 'sub-phy',
+    subjectName: 'Physics',
+  },
+  {
+    id: 'ta-002',
+    teacherId: 'u-faculty',
+    teacherName: 'Dr. Rahul Sharma',
+    branchId: 'b-hdw',
+    branchName: 'Handwara',
+    classId: 'c-11-med',
+    className: 'Class 11 Medical',
+    wingId: 'w-med',
+    wingName: 'Pre-Medical (NEET) Wing',
+    batchId: 'batch-neet-a-hdw',
+    batchName: 'NEET-A',
+    subjectId: 'sub-phy',
+    subjectName: 'Physics',
+  },
+];
+
+export const INITIAL_CUSTOM_ROLES = [
+  {
+    id: 'role-branch-accountant',
+    name: 'Branch Accountant',
+    description: 'Handles branch-level fee collection, student invoicing, and monthly salary reconciliation.',
+    status: 'active',
+    assignedBranchIds: ['b-hdw'],
+    permissions: {
+      fees: ['view', 'collect_payment', 'generate_receipt', 'manage_salary'],
+      students: ['view'],
+      reports: ['view'],
+    },
+    createdBy: 'Syed Tanveer Hashmi',
+    createdAt: '2025-01-10',
+  },
+  {
+    id: 'role-exam-coordinator',
+    name: 'OMR & Exam Controller',
+    description: 'Supervises test schedule creation, OMR paper batch uploads, and scorecard publications.',
+    status: 'active',
+    assignedBranchIds: ['all'],
+    permissions: {
+      examination: ['view', 'add', 'edit'],
+      academic: ['view'],
+      students: ['view'],
+      reports: ['view', 'export_report'],
+    },
+    createdBy: 'Syed Tanveer Hashmi',
+    createdAt: '2025-02-14',
+  },
+];
+
 export const DEMO_USERS = {
   'ceo@careerheights.demo': {
     passwordHint: 'Demo@123',
@@ -387,7 +555,8 @@ export const DEMO_USERS = {
       email: 'ceo@careerheights.demo',
       name: 'Dr. Ghulam Mohammad Lone',
       role: 'ceo',
-      roleTitle: 'Chief Executive Officer & Founder',
+      roleTitle: 'SuperAdmin & Owner',
+      assignedBranchIds: ['all', 'b-hdw', 'b-qzb', 'b-dgw', 'b-klb', 'b-uns'],
       phone: '+91 94190 00001',
       avatar:
         'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=160&q=80',
@@ -400,7 +569,8 @@ export const DEMO_USERS = {
       email: 'admin@careerheights.demo',
       name: 'Syed Tanveer Hashmi',
       role: 'hq_admin',
-      roleTitle: 'HQ Chief Operating Officer',
+      roleTitle: 'HQ Admin & Operations Chief',
+      assignedBranchIds: ['all', 'b-hdw', 'b-qzb', 'b-dgw', 'b-klb', 'b-uns'],
       phone: '+91 94190 00002',
       avatar:
         'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=160&q=80',
@@ -413,9 +583,10 @@ export const DEMO_USERS = {
       email: 'branch@careerheights.demo',
       name: 'Mohammad Altaf Lone',
       role: 'branch_admin',
-      roleTitle: 'Handwara Branch Director',
+      roleTitle: 'Admin (Handwara & Qaziabad)',
       branchId: 'b-hdw',
       branchName: 'Handwara',
+      assignedBranchIds: ['b-hdw', 'b-qzb'],
       phone: '+91 94190 12001',
       avatar:
         'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=160&q=80',
@@ -428,10 +599,12 @@ export const DEMO_USERS = {
       email: 'faculty@careerheights.demo',
       name: 'Dr. Rahul Sharma',
       role: 'faculty',
-      roleTitle: 'Senior Physics Faculty (HOD)',
+      roleTitle: 'Teacher / Senior Physics Faculty',
       branchId: 'b-hdw',
       branchName: 'Handwara',
+      assignedBranchIds: ['b-hdw'],
       subject: 'Physics',
+      subjectId: 'sub-phy',
       phone: '+91 94190 22001',
       avatar:
         'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=160&q=80',
@@ -444,9 +617,10 @@ export const DEMO_USERS = {
       email: 'student@careerheights.demo',
       name: 'Aarav Sharma',
       role: 'student',
-      roleTitle: 'JEE Aspirant (CH-2026-001)',
+      roleTitle: 'Student (Class 11 Engineering)',
       branchId: 'b-hdw',
       branchName: 'Handwara',
+      assignedBranchIds: ['b-hdw'],
       linkedStudentId: 'st-001',
       linkedStudentName: 'Aarav Sharma',
       phone: '+91 97970 11001',
@@ -461,10 +635,12 @@ export const DEMO_USERS = {
       email: 'parent@careerheights.demo',
       name: 'Rajesh Sharma',
       role: 'parent',
-      roleTitle: 'Guardian of Aarav Sharma',
+      roleTitle: 'Parent of Aarav & Ananya Sharma',
       branchId: 'b-hdw',
       branchName: 'Handwara',
+      assignedBranchIds: ['b-hdw'],
       linkedStudentId: 'st-001',
+      linkedStudentIds: ['st-001', 'st-005'],
       linkedStudentName: 'Aarav Sharma',
       phone: '+91 94191 55001',
       avatar:
@@ -481,6 +657,7 @@ export const DEMO_USERS = {
       roleTitle: 'Chief Academic Counsellor',
       branchId: 'b-hdw',
       branchName: 'Handwara',
+      assignedBranchIds: ['b-hdw'],
       phone: '+91 94190 33001',
       avatar:
         'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=160&q=80',
@@ -493,9 +670,10 @@ export const DEMO_USERS = {
       email: 'accountant@careerheights.demo',
       name: 'Imran Lone',
       role: 'accountant',
-      roleTitle: 'Senior Finance Officer',
+      roleTitle: 'Accountant / Coordinator',
       branchId: 'b-hdw',
       branchName: 'Handwara',
+      assignedBranchIds: ['b-hdw'],
       phone: '+91 94190 44001',
       avatar:
         'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=160&q=80',
@@ -509,6 +687,7 @@ export const DEMO_USERS = {
       name: 'Parveena Akhtar',
       role: 'hr_manager',
       roleTitle: 'Head of Human Resources',
+      assignedBranchIds: ['all'],
       phone: '+91 94190 55001',
       avatar:
         'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=160&q=80',
@@ -623,10 +802,18 @@ function generateStudents() {
     className: 'Class 11 Engineering',
     batchId: 'batch-jee-a',
     batchName: 'JEE-A',
+    subjectComboId: 'combo-eng',
+    enrolledSubjects: ['sub-phy', 'sub-chem', 'sub-math'],
     parentName: 'Rajesh Sharma',
     parentPhone: '+91 94191 55001',
     parentEmail: 'parent@careerheights.demo',
     parentOccupation: 'Government Senior Lecturer',
+    fatherName: 'Rajesh Sharma',
+    fatherPhone: '+91 94191 55001',
+    motherName: 'Sunita Sharma',
+    motherPhone: '+91 94191 55009',
+    guardianName: 'Rajesh Sharma',
+    guardianPhone: '+91 94191 55001',
     schoolName: 'Govt Boys Model Hr Sec School Handwara',
     previousPercentage: 94.2,
     admissionDate: '2025-04-10',
@@ -663,10 +850,18 @@ function generateStudents() {
     className: 'Class 12 Medical',
     batchId: 'batch-neet-a-qzb',
     batchName: 'NEET-A',
+    subjectComboId: 'combo-med',
+    enrolledSubjects: ['sub-phy', 'sub-chem', 'sub-bot', 'sub-zoo'],
     parentName: 'Tariq Ahmad Khan',
     parentPhone: '+91 94191 55002',
     parentEmail: 'tariq.khan@gmail.demo',
     parentOccupation: 'Merchant & Trader',
+    fatherName: 'Tariq Ahmad Khan',
+    fatherPhone: '+91 94191 55002',
+    motherName: 'Amina Khan',
+    motherPhone: '+91 94191 55010',
+    guardianName: 'Tariq Ahmad Khan',
+    guardianPhone: '+91 94191 55002',
     schoolName: 'Army Goodwill School Hanzik',
     previousPercentage: 91.8,
     admissionDate: '2025-04-15',
@@ -704,10 +899,18 @@ function generateStudents() {
     className: 'Class 11 Engineering',
     batchId: 'batch-jee-a',
     batchName: 'JEE-A',
+    subjectComboId: 'combo-eng',
+    enrolledSubjects: ['sub-phy', 'sub-chem', 'sub-math'],
     parentName: 'Bashir Ahmad Dar',
     parentPhone: '+91 94191 55003',
     parentEmail: 'bashir.dar@gmail.demo',
     parentOccupation: 'Farmer / Horticulture',
+    fatherName: 'Bashir Ahmad Dar',
+    fatherPhone: '+91 94191 55003',
+    motherName: 'Zainab Dar',
+    motherPhone: '+91 94191 55011',
+    guardianName: 'Bashir Ahmad Dar',
+    guardianPhone: '+91 94191 55003',
     schoolName: 'Govt High School Kulangam',
     previousPercentage: 74,
     admissionDate: '2025-05-02',
@@ -747,8 +950,16 @@ function generateStudents() {
   let idCounter = 4;
   for (const alloc of branchAllocations) {
     for (let i = 0; i < alloc.count; i++) {
-      const fn = FIRST_NAMES[(idCounter * 7 + i * 3) % FIRST_NAMES.length];
-      const ln = LAST_NAMES[(idCounter * 11 + i * 5) % LAST_NAMES.length];
+      const isSibling = idCounter === 5;
+      const isSingleSubject = idCounter === 7;
+      const isCustomSubjects = idCounter === 8;
+
+      const fn = isSibling
+        ? 'Ananya'
+        : FIRST_NAMES[(idCounter * 7 + i * 3) % FIRST_NAMES.length];
+      const ln = isSibling
+        ? 'Sharma'
+        : LAST_NAMES[(idCounter * 11 + i * 5) % LAST_NAMES.length];
       const fullName = `${fn} ${ln}`;
       const batchId = alloc.batches[i % alloc.batches.length];
       const batchObj = INITIAL_BATCHES.find((b) => b.id === batchId);
@@ -770,6 +981,27 @@ function generateStudents() {
           ? Math.floor(pending * 0.5)
           : 0;
       const pendingDocs = isCritical ? 2 : isAmber ? 1 : 0;
+
+      // Subject enrollment & Combos
+      let enrolledSubjects = ['sub-phy', 'sub-chem', 'sub-math'];
+      let subjectComboId = 'combo-eng';
+
+      if (isSingleSubject) {
+        // Explicit Requirement: Student with ONLY ONE subject (No Combo)
+        enrolledSubjects = ['sub-phy'];
+        subjectComboId = null;
+      } else if (isCustomSubjects) {
+        // Explicit Requirement: Custom subject selection (Physics, Chemistry, Zoology - no Botany)
+        enrolledSubjects = ['sub-phy', 'sub-chem', 'sub-zoo'];
+        subjectComboId = 'combo-med';
+      } else if (batchObj.wingId.includes('med')) {
+        enrolledSubjects = ['sub-phy', 'sub-chem', 'sub-bot', 'sub-zoo'];
+        subjectComboId = 'combo-med';
+      } else if (batchObj.wingId.includes('fnd')) {
+        enrolledSubjects = ['sub-math', 'sub-phy', 'sub-chem', 'sub-bio', 'sub-eng'];
+        subjectComboId = 'combo-fnd';
+      }
+
       students.push({
         id: `st-${String(idCounter).padStart(3, '0')}`,
         studentId: `CH-2026-${String(idCounter).padStart(3, '0')}`,
@@ -777,7 +1009,7 @@ function generateStudents() {
         name: fullName,
         photo:
           VALID_STUDENT_AVATARS[(idCounter - 1) % VALID_STUDENT_AVATARS.length],
-        gender: idCounter % 2 === 0 ? 'Female' : 'Male',
+        gender: isSibling ? 'Female' : idCounter % 2 === 0 ? 'Female' : 'Male',
         dob: `200${7 + (idCounter % 3)}-0${1 + (idCounter % 9)}-${10 + (idCounter % 18)}`,
         email: `${fn.toLowerCase()}.${ln.toLowerCase()}@careerheights.demo`,
         phone: `+91 97970 ${1e4 + idCounter}`,
@@ -789,16 +1021,26 @@ function generateStudents() {
         className: batchObj.className,
         batchId: batchObj.id,
         batchName: batchObj.name,
-        parentName: `${LAST_NAMES[(idCounter * 3) % LAST_NAMES.length]} Parent`,
-        parentPhone: `+91 94191 ${2e4 + idCounter}`,
-        parentEmail: `parent.${idCounter}@gmail.demo`,
-        parentOccupation: [
-          'Teacher',
-          'Civil Servant',
-          'Business Owner',
-          'Contractor',
-          'Agriculturist',
-        ][idCounter % 5],
+        subjectComboId,
+        enrolledSubjects,
+        parentName: isSibling ? 'Rajesh Sharma' : `${LAST_NAMES[(idCounter * 3) % LAST_NAMES.length]} Parent`,
+        parentPhone: isSibling ? '+91 94191 55001' : `+91 94191 ${2e4 + idCounter}`,
+        parentEmail: isSibling ? 'parent@careerheights.demo' : `parent.${idCounter}@gmail.demo`,
+        parentOccupation: isSibling
+          ? 'Government Senior Lecturer'
+          : [
+              'Teacher',
+              'Civil Servant',
+              'Business Owner',
+              'Contractor',
+              'Agriculturist',
+            ][idCounter % 5],
+        fatherName: isSibling ? 'Rajesh Sharma' : `${LAST_NAMES[(idCounter * 3) % LAST_NAMES.length]} Senior`,
+        fatherPhone: isSibling ? '+91 94191 55001' : `+91 94191 ${2e4 + idCounter}`,
+        motherName: isSibling ? 'Sunita Sharma' : `Mrs. ${LAST_NAMES[(idCounter * 3) % LAST_NAMES.length]}`,
+        motherPhone: `+91 94191 ${3e4 + idCounter}`,
+        guardianName: isSibling ? 'Rajesh Sharma' : `${LAST_NAMES[(idCounter * 3) % LAST_NAMES.length]} Senior`,
+        guardianPhone: isSibling ? '+91 94191 55001' : `+91 94191 ${2e4 + idCounter}`,
         schoolName: [
           'Govt Hr Sec School',
           'St. Joseph School',

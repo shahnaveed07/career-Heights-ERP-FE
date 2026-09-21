@@ -6,6 +6,7 @@ import {
   Phone,
   GraduationCap,
   X,
+  BookOpen,
 } from 'lucide-react';
 import { useErpData } from '../context/ErpDataContext';
 import { useAuth } from '../context/AuthContext';
@@ -20,7 +21,8 @@ export const StudentManagementView = ({ initialStudentId }) => {
     testResults,
     documents,
   } = useErpData();
-  const { activeBranchFilter, setActiveBranchFilter } = useAuth();
+  const { activeBranchFilter, setActiveBranchFilter, uiMode, can } = useAuth();
+  const canCreateStudent = uiMode !== 'view' && can('students', 'create');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedBranch, setSelectedBranch] = useState(
     activeBranchFilter === 'all' ? 'all' : activeBranchFilter
@@ -142,13 +144,19 @@ export const StudentManagementView = ({ initialStudentId }) => {
         </div>
 
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => setShowAddModal(true)}
-            className="flex items-center gap-1.5 rounded-lg bg-blue-900 px-3.5 py-2 text-xs font-bold text-white shadow-xs hover:bg-blue-800 transition"
-          >
-            <Plus className="h-4 w-4" />
-            <span>Enroll New Student</span>
-          </button>
+          {canCreateStudent ? (
+            <button
+              onClick={() => setShowAddModal(true)}
+              className="flex items-center gap-1.5 rounded-lg bg-blue-900 px-3.5 py-2 text-xs font-bold text-white shadow-xs hover:bg-blue-800 transition"
+            >
+              <Plus className="h-4 w-4" />
+              <span>Enroll New Student</span>
+            </button>
+          ) : (
+            <span className="rounded-lg bg-slate-100 border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-500">
+              Enrollment Locked (View Mode)
+            </span>
+          )}
         </div>
       </div>
 
@@ -557,6 +565,32 @@ export const StudentManagementView = ({ initialStudentId }) => {
                       <span className="font-bold text-slate-900">
                         {activeStudent.previousPercentage}%
                       </span>
+                    </div>
+                  </div>
+
+                  <div className="md:col-span-2 rounded-xl border border-blue-200 p-4 bg-blue-50/40">
+                    <div className="flex items-center justify-between mb-2">
+                      <h3 className="font-bold text-slate-900 text-xs uppercase tracking-wider flex items-center gap-1.5">
+                        <BookOpen className="h-4 w-4 text-blue-900" />
+                        <span>Enrolled Subject Curriculum</span>
+                      </h3>
+                      <span className="text-[10px] text-blue-800 font-semibold bg-blue-100 px-2 py-0.5 rounded-full border border-blue-200">
+                        {activeStudent.batchName}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-500 mb-2.5">
+                      Subject combinations are preset templates; individual student subject enrollment is tracked separately per student.
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {(activeStudent.subjects || ['Physics', 'Chemistry', 'Botany', 'Zoology']).map((sub, idx) => (
+                        <span
+                          key={idx}
+                          className="inline-flex items-center gap-1.5 rounded-lg bg-white px-3 py-1.5 text-xs font-bold text-slate-800 border border-slate-200 shadow-2xs"
+                        >
+                          <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                          {sub}
+                        </span>
+                      ))}
                     </div>
                   </div>
 

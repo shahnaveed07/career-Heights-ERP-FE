@@ -65,7 +65,7 @@ const MODULE_PERMISSIONS = {
   reports: ['ceo', 'hq_admin', 'branch_admin', 'accountant'],
 };
 const ErpContent = () => {
-  const { currentUser, isAuthenticated } = useAuth();
+  const { currentUser, isAuthenticated, can } = useAuth();
   const [activeModule, setActiveModule] = useState('dashboard');
   const [focusedStudentId, setFocusedStudentId] = useState(null);
   useEffect(() => {
@@ -94,26 +94,22 @@ const ErpContent = () => {
     setActiveModule('students');
   };
   const renderActiveModule = () => {
-    const allowedRoles = MODULE_PERMISSIONS[activeModule];
-    if (
-      allowedRoles &&
-      !allowedRoles.includes('*') &&
-      !allowedRoles.includes(currentUser.role)
-    ) {
+    const hasAccess = activeModule === 'dashboard' || can(activeModule, 'view');
+    if (!hasAccess) {
       return (
         <div className="flex flex-col items-center justify-center min-h-[60vh] p-8 text-center">
           <div className="w-16 h-16 rounded-2xl bg-red-50 text-red-600 flex items-center justify-center mb-4 shadow-sm border border-red-100">
             <Lock className="w-8 h-8" />
           </div>
           <h2 className="text-xl font-bold text-slate-800 mb-2">
-            Access Restricted
+            Access Restricted (RBAC Enforced)
           </h2>
           <p className="text-sm text-slate-500 max-w-md mb-6">
             Your current account role (
             <span className="font-semibold text-slate-700">
               {currentUser.role.replace('_', ' ').toUpperCase()}
             </span>
-            ) does not have security clearance to access the requested module.
+            ) does not have security clearance to view the <strong>{activeModule.replace('_', ' ')}</strong> module under institution governance policies.
           </p>
           <button
             onClick={() => {

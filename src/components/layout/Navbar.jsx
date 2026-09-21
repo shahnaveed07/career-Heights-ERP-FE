@@ -9,15 +9,21 @@ import {
   AlertTriangle,
   CheckCircle2,
   FileText,
+  Eye,
+  Edit3,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useErpData } from '../../context/ErpDataContext';
 import { StudentAvatar } from '../common/StudentAvatar';
+import { getUserAccessibleBranches } from '../../utils/permissionManager';
+
 export const Navbar = ({ onToggleSidebar, onSelectModule }) => {
   const {
     currentUser,
     activeBranchFilter,
     setActiveBranchFilter,
+    uiMode,
+    toggleUiMode,
     logout,
     loginAsDemoRole,
   } = useAuth();
@@ -26,23 +32,29 @@ export const Navbar = ({ onToggleSidebar, onSelectModule }) => {
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showRoleSwitcher, setShowRoleSwitcher] = useState(false);
   const [showBranchDropdown, setShowBranchDropdown] = useState(false);
+
   const unreadNotifications = notifications.filter((n) => !n.read);
   const rolesList = [
-    { role: 'ceo', label: 'CEO / Super Admin', name: 'Dr. Ghulam Mohammad' },
-    { role: 'hq_admin', label: 'HQ Admin', name: 'Syed Tanveer' },
+    { role: 'ceo', label: 'SuperAdmin / Owner', name: 'Dr. Ghulam Mohammad' },
+    { role: 'hq_admin', label: 'HQ Admin & Operations', name: 'Syed Tanveer' },
     {
       role: 'branch_admin',
-      label: 'Branch Admin (Handwara)',
+      label: 'Admin (Handwara & Qzb)',
       name: 'Mohammad Altaf',
     },
-    { role: 'faculty', label: 'Faculty (Physics)', name: 'Dr. Rahul Sharma' },
+    { role: 'faculty', label: 'Teacher / Faculty (Physics)', name: 'Dr. Rahul Sharma' },
     { role: 'student', label: 'Student (JEE-A)', name: 'Aarav Sharma' },
-    { role: 'parent', label: 'Parent', name: 'Rajesh Sharma' },
+    { role: 'parent', label: 'Parent (Multi-child)', name: 'Rajesh Sharma' },
     { role: 'counsellor', label: 'Counsellor', name: 'Mehak Khan' },
-    { role: 'accountant', label: 'Accountant', name: 'Imran Lone' },
+    { role: 'accountant', label: 'Accountant / Coordinator', name: 'Imran Lone' },
     { role: 'hr_manager', label: 'HR Manager', name: 'Parveena Akhtar' },
   ];
+
+  // Multi-branch accessibility for current user
+  const accessibleBranches = getUserAccessibleBranches(currentUser, branches);
+  const isSuperOrHq = currentUser?.role === 'ceo' || currentUser?.role === 'super_admin' || currentUser?.role === 'hq_admin';
   const currentBranchObj = branches.find((b) => b.id === activeBranchFilter);
+
   return (
     <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b border-slate-200 bg-white/95 px-4 shadow-xs backdrop-blur-sm sm:px-6">
       <div className="flex items-center gap-3">
@@ -73,87 +85,134 @@ export const Navbar = ({ onToggleSidebar, onSelectModule }) => {
           </div>
         </div>
 
-        {/* Branch Switcher for HQ/CEO */}
-        {(currentUser?.role === 'ceo' || currentUser?.role === 'hq_admin') && (
-          <div className="relative ml-4">
-            <button
-              onClick={() => {
-                setShowBranchDropdown(!showBranchDropdown);
-                setShowUserMenu(false);
-                setShowRoleSwitcher(false);
-                setShowNotifications(false);
-              }}
-              className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-xs font-semibold text-slate-800 transition hover:bg-slate-100"
-            >
-              <Building2 className="h-3.5 w-3.5 text-blue-700" />
-              <span>
-                {activeBranchFilter === 'all'
-                  ? 'All Branches (HQ View)'
-                  : currentBranchObj?.name}
-              </span>
-              <ChevronDown className="h-3 w-3 text-slate-500" />
-            </button>
+        {/* ACTIVE BRANCH SELECTOR (Strict single active branch context) */}
+        <div className="relative ml-2 sm:ml-4">
+          {accessibleBranches.length > 1 || isSuperOrHq ? (
+            <div className="relative">
+              <button
+                onClick={() => {
+                  setShowBranchDropdown(!showBranchDropdown);
+                  setShowUserMenu(false);
+                  setShowRoleSwitcher(false);
+                  setShowNotifications(false);
+                }}
+                className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-xs font-semibold text-slate-800 transition hover:bg-slate-100 shadow-2xs"
+                title="Active Branch Selector (Only one branch active at a time)"
+              >
+                <Building2 className="h-3.5 w-3.5 text-blue-700" />
+                <span className="font-medium text-slate-500 hidden md:inline">Active Branch:</span>
+                <span className="font-bold text-slate-900">
+                  {activeBranchFilter === 'all'
+                    ? 'All Branches (HQ View)'
+                    : currentBranchObj?.name || 'Selected Branch'}
+                </span>
+                <ChevronDown className="h-3 w-3 text-slate-500" />
+              </button>
 
-            {showBranchDropdown && (
-              <div className="absolute left-0 mt-1.5 w-56 rounded-xl border border-slate-200 bg-white py-1 shadow-lg z-50">
-                <div className="px-3 py-1.5 text-[10px] font-bold tracking-wider text-slate-400 uppercase">
-                  Select Operating Branch
-                </div>
-                <button
-                  onClick={() => {
-                    setActiveBranchFilter('all');
-                    setShowBranchDropdown(false);
-                  }}
-                  className={`w-full px-3 py-2 text-left text-xs font-medium flex items-center justify-between hover:bg-blue-50 hover:text-blue-900 ${activeBranchFilter === 'all' ? 'bg-blue-50 text-blue-900 font-bold' : 'text-slate-700'}`}
-                >
-                  <span>HQ Consolidated (All 5 Branches)</span>
-                  {activeBranchFilter === 'all' && (
-                    <CheckCircle2 className="h-3.5 w-3.5 text-blue-700" />
+              {showBranchDropdown && (
+                <div className="absolute left-0 mt-1.5 w-60 rounded-xl border border-slate-200 bg-white py-1.5 shadow-xl z-50 animate-in fade-in slide-in-from-top-1 duration-150">
+                  <div className="px-3 py-1.5 border-b border-slate-100">
+                    <p className="text-[10px] font-bold tracking-wider text-slate-400 uppercase">
+                      Select Active Branch Context
+                    </p>
+                    <p className="text-[10px] text-slate-500">
+                      {isSuperOrHq ? 'SuperAdmin central control' : 'Permitted assigned branches'}
+                    </p>
+                  </div>
+
+                  {isSuperOrHq && (
+                    <>
+                      <button
+                        onClick={() => {
+                          setActiveBranchFilter('all');
+                          setShowBranchDropdown(false);
+                        }}
+                        className={`w-full px-3 py-2 text-left text-xs font-medium flex items-center justify-between hover:bg-blue-50 hover:text-blue-900 ${activeBranchFilter === 'all' ? 'bg-blue-50 text-blue-900 font-bold' : 'text-slate-700'}`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <Building2 className="h-3.5 w-3.5 text-blue-700" />
+                          <span>All Branches (HQ Consolidated)</span>
+                        </div>
+                        {activeBranchFilter === 'all' && (
+                          <CheckCircle2 className="h-3.5 w-3.5 text-blue-700" />
+                        )}
+                      </button>
+                      <div className="my-1 border-t border-slate-100" />
+                    </>
                   )}
-                </button>
-                <div className="my-1 border-t border-slate-100" />
-                {branches.map((b) => (
-                  <button
-                    key={b.id}
-                    onClick={() => {
-                      setActiveBranchFilter(b.id);
-                      setShowBranchDropdown(false);
-                    }}
-                    className={`w-full px-3 py-1.5 text-left text-xs flex items-center justify-between hover:bg-slate-50 ${activeBranchFilter === b.id ? 'bg-blue-50 text-blue-900 font-semibold' : 'text-slate-700'}`}
-                  >
-                    <div>
-                      <div className="font-medium">{b.name}</div>
-                      <div className="text-[10px] text-slate-400">
-                        {b.studentCount} Students • {b.code}
-                      </div>
-                    </div>
-                    {activeBranchFilter === b.id && (
-                      <CheckCircle2 className="h-3.5 w-3.5 text-blue-700" />
-                    )}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
 
-        {currentUser?.role !== 'ceo' &&
-          currentUser?.role !== 'hq_admin' &&
-          currentUser?.branchName && (
+                  <div className="max-h-60 overflow-y-auto">
+                    {accessibleBranches.map((b) => (
+                      <button
+                        key={b.id}
+                        onClick={() => {
+                          setActiveBranchFilter(b.id);
+                          setShowBranchDropdown(false);
+                        }}
+                        className={`w-full px-3 py-2 text-left text-xs flex items-center justify-between hover:bg-slate-50 transition ${activeBranchFilter === b.id ? 'bg-blue-50 text-blue-900 font-semibold' : 'text-slate-700'}`}
+                      >
+                        <div>
+                          <div className="font-semibold">{b.name}</div>
+                          <div className="text-[10px] text-slate-400">
+                            {b.studentCount} Students • {b.code}
+                          </div>
+                        </div>
+                        {activeBranchFilter === b.id && (
+                          <CheckCircle2 className="h-3.5 w-3.5 text-blue-700" />
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
             <div className="hidden md:flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">
               <Building2 className="h-3.5 w-3.5 text-slate-500" />
               <span>
-                Branch:{' '}
+                Active Branch:{' '}
                 <strong className="text-slate-900">
-                  {currentUser.branchName}
+                  {currentBranchObj?.name || currentUser?.branchName || 'Handwara'}
                 </strong>
               </span>
             </div>
           )}
+        </div>
       </div>
 
       <div className="flex items-center gap-2 sm:gap-3">
-        {/* Quick Demo Switcher */}
+        {/* VIEW ONLY / EDIT MODE TOGGLE */}
+        <div className="flex items-center">
+          <button
+            onClick={toggleUiMode}
+            className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-bold transition shadow-2xs border ${
+              uiMode === 'view'
+                ? 'bg-amber-50 border-amber-300 text-amber-900 hover:bg-amber-100'
+                : 'bg-emerald-50 border-emerald-300 text-emerald-900 hover:bg-emerald-100'
+            }`}
+            title={
+              uiMode === 'view'
+                ? 'Current: VIEW ONLY mode (Data modification disabled). Click to switch to EDIT MODE.'
+                : 'Current: EDIT MODE (Data mutations permitted by role). Click to switch to VIEW ONLY mode.'
+            }
+          >
+            {uiMode === 'view' ? (
+              <>
+                <Eye className="h-3.5 w-3.5 text-amber-700" />
+                <span className="hidden sm:inline">MODE:</span>
+                <span className="uppercase tracking-wider">VIEW ONLY</span>
+              </>
+            ) : (
+              <>
+                <Edit3 className="h-3.5 w-3.5 text-emerald-700" />
+                <span className="hidden sm:inline">MODE:</span>
+                <span className="uppercase tracking-wider">EDIT MODE</span>
+              </>
+            )}
+          </button>
+        </div>
+
+        {/* Quick Demo Role Switcher */}
         <div className="relative">
           <button
             onClick={() => {
@@ -162,15 +221,17 @@ export const Navbar = ({ onToggleSidebar, onSelectModule }) => {
               setShowNotifications(false);
               setShowBranchDropdown(false);
             }}
-            className="flex items-center gap-1.5 rounded-lg border border-amber-300 bg-amber-50 px-2.5 py-1.5 text-xs font-bold text-amber-900 shadow-xs hover:bg-amber-100"
-            title="Fast switch between demo roles to test all dashboards"
+            className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-xs font-bold text-slate-800 shadow-2xs hover:bg-slate-100"
+            title="Fast switch between demo roles to test all authority tiers"
           >
-            <UserCheck className="h-3.5 w-3.5 text-amber-700" />
-            <span className="hidden sm:inline">Role Switcher:</span>
+            <UserCheck className="h-3.5 w-3.5 text-blue-700" />
+            <span className="hidden sm:inline">Role:</span>
             <span className="capitalize">
-              {currentUser?.role.replace('_', ' ')}
+              {currentUser?.role === 'accountant'
+                ? 'Accountant / Coordinator'
+                : currentUser?.role.replace('_', ' ')}
             </span>
-            <ChevronDown className="h-3 w-3 text-amber-700" />
+            <ChevronDown className="h-3 w-3 text-slate-500" />
           </button>
 
           {showRoleSwitcher && (
@@ -361,3 +422,4 @@ export const Navbar = ({ onToggleSidebar, onSelectModule }) => {
     </header>
   );
 };
+
