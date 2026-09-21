@@ -611,7 +611,11 @@ function generateStudents(): Student[] {
         parentOccupation: ['Teacher', 'Civil Servant', 'Business Owner', 'Contractor', 'Agriculturist'][idCounter % 5],
         schoolName: ['Govt Hr Sec School', 'St. Joseph School', 'Army Goodwill School', 'Public Model School'][idCounter % 4],
         previousPercentage: 75 + (idCounter % 24),
-        admissionDate: '2025-04-18',
+        admissionDate: (idCounter === 6)
+          ? getTodayDateString()
+          : (idCounter % 6 === 0)
+          ? getPastDateString((idCounter % 15) + 1)
+          : '2025-04-18',
         admissionSource: (['Direct Walk-in', 'CHTQ Scholarship', 'Referral', 'Website', 'Seminar'] as const)[idCounter % 5],
         scholarshipType: (['None', 'None', 'CHTQ 50%', 'Merit Waiver', 'BPL Concession'] as const)[idCounter % 5],
         scholarshipPercent: (idCounter % 5 === 2) ? 50 : (idCounter % 5 === 3) ? 25 : (idCounter % 5 === 4) ? 40 : 0,
@@ -1024,8 +1028,8 @@ export const INITIAL_ENQUIRIES: Enquiry[] = [
 
 export const INITIAL_FEE_RECEIPTS: FeeReceipt[] = [
   {
-    id: 'rcpt-1001',
-    receiptNo: 'CH/RCPT/2026/0891',
+    id: 'rcpt-1',
+    receiptNo: 'CH/RCPT/2026/000001',
     studentId: 'st-001',
     studentName: 'Aarav Sharma',
     studentCode: 'CH-2026-001',
@@ -1039,8 +1043,8 @@ export const INITIAL_FEE_RECEIPTS: FeeReceipt[] = [
     notes: 'Q2 Tuition Installment paid in full with CHTQ concession applied.',
   },
   {
-    id: 'rcpt-1002',
-    receiptNo: 'CH/RCPT/2026/0892',
+    id: 'rcpt-2',
+    receiptNo: 'CH/RCPT/2026/000002',
     studentId: 'st-002',
     studentName: 'Ayaan Khan',
     studentCode: 'CH-2026-002',
@@ -1054,8 +1058,8 @@ export const INITIAL_FEE_RECEIPTS: FeeReceipt[] = [
     notes: 'Term 2 Fee cleared.',
   },
   {
-    id: 'rcpt-1003',
-    receiptNo: 'CH/RCPT/2026/0893',
+    id: 'rcpt-3',
+    receiptNo: 'CH/RCPT/2026/000003',
     studentId: 'st-004',
     studentName: 'Priya Patel',
     studentCode: 'CH-2026-004',

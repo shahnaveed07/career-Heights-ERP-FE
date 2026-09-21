@@ -83,7 +83,10 @@ interface ErpDataContextType {
   updateStudent: (id: string, updates: Partial<Student>) => void;
   addEnquiry: (enquiryData: Partial<Enquiry>) => void;
   updateEnquiryStatus: (id: string, status: Enquiry['status'], lostReason?: string) => void;
-  convertEnquiryToAdmission: (enquiryId: string, options?: { batchId?: string; feesTotal?: number; feesPaid?: number }) => Student | null;
+  convertEnquiryToAdmission: (
+    enquiryId: string,
+    options?: { branchId?: string; batchId?: string; admissionSource?: string; feesTotal?: number; feesPaid?: number }
+  ) => Student | null;
   addCounsellingNote: (id: string, note: string) => void;
   markBatchAttendance: (batchId: string, dateOrRecords: string | { studentId: string; status: AttendanceStatus }[], maybeStatus?: AttendanceStatus) => void;
   markStudentAttendance: (studentId: string, dateOrStatus: string, maybeStatus?: AttendanceStatus) => void;
@@ -285,16 +288,26 @@ export const ErpDataProvider: React.FC<{ children: React.ReactNode }> = ({ child
     addAuditLog('Updated Enquiry Pipeline Stage', 'Admission & Enquiry CRM', `Moved enquiry #${id} to status "${status}".`);
   };
 
-  const convertEnquiryToAdmission = (enquiryId: string, options?: { batchId?: string; feesTotal?: number; feesPaid?: number }): Student | null => {
+  const convertEnquiryToAdmission = (
+    enquiryId: string,
+    options?: { branchId?: string; batchId?: string; admissionSource?: string; feesTotal?: number; feesPaid?: number }
+  ): Student | null => {
     const enq = enquiries.find(e => e.id === enquiryId);
     if (!enq) return null;
 
-    // Resolve assigned batch preserving branch and matching course
+    // Resolve target branch: options.branchId -> enq.branchId -> first branch
+    const targetBranchId = options?.branchId || enq.branchId;
+    const branch = branches.find(b => b.id === targetBranchId) || branches[0];
+
+    // Resolve assigned batch preserving branch and matching course if possible
     let selectedBatch = options?.batchId ? batches.find(b => b.id === options.batchId) : undefined;
     if (!selectedBatch) {
-      selectedBatch = batches.find(b => b.branchId === enq.branchId) || batches[0];
+      selectedBatch = batches.find(b => b.branchId === branch.id && (b.className === enq.targetCourse || b.name.toLowerCase().includes(enq.targetCourse?.toLowerCase() || '')))
+        || batches.find(b => b.branchId === branch.id)
+        || batches[0];
     }
-    const branch = branches.find(b => b.id === enq.branchId) || branches.find(b => b.id === selectedBatch?.branchId) || branches[0];
+
+    const preservedSource = (options?.admissionSource || enq.source || 'Direct Walk-in') as Student['admissionSource'];
 
     const newStudent = addStudent({
       name: enq.studentName || enq.name || 'Enrolled Student',
@@ -305,16 +318,20 @@ export const ErpDataProvider: React.FC<{ children: React.ReactNode }> = ({ child
       branchName: branch.name,
       batchId: selectedBatch.id,
       batchName: selectedBatch.name,
-      admissionSource: (enq.source as Student['admissionSource']) || 'Direct Walk-in',
+      admissionSource: preservedSource,
       admissionDate: getTodayDateString(),
       status: 'active',
-      feesTotal: options?.feesTotal || 95000,
-      feesPaid: options?.feesPaid || 25000,
-      remarks: `Enrolled from CRM Enquiry #${enq.id}. Target Course: ${enq.targetCourse}. Counsellor: ${enq.counsellorName || 'Admissions Desk'}.`,
+      feesTotal: options?.feesTotal !== undefined ? options.feesTotal : 95000,
+      feesPaid: options?.feesPaid !== undefined ? options.feesPaid : 25000,
+      remarks: `Enrolled from CRM Enquiry #${enq.id}. Target Course: ${enq.targetCourse}. Counsellor: ${enq.counsellorName || enq.assignedCounsellor || 'Admissions Desk'}.`,
     });
 
     updateEnquiryStatus(enquiryId, 'admission');
-    addAuditLog('Converted Enquiry to Admission', 'Admission & Enquiry CRM', `Enrolled lead ${enq.studentName} with source "${enq.source}" into batch "${selectedBatch.name}".`);
+    addAuditLog(
+      'Converted Enquiry to Admission',
+      'Admission & Enquiry CRM',
+      `Enrolled lead ${enq.studentName || enq.name} with source "${preservedSource}" into branch "${branch.name}", batch "${selectedBatch.name}".`
+    );
     return newStudent;
   };
 
@@ -442,6 +459,9 @@ export const ErpDataProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const student = students.find(s => s.id === paymentData.studentId);
     if (!student) {
       throw new Error(`Student ${paymentData.studentId} not found`);
+    }
+    if (student.feesPending <= 0) {
+      throw new Error(`Student ${student.name} has no outstanding balance (account is fully settled).`);
     }
     if (paymentData.amount <= 0) {
       throw new Error('Payment amount must be greater than ₹0.');

@@ -16,7 +16,7 @@ import { StudentAvatar } from '../components/common/StudentAvatar';
 
 export const FeesAccountsView: React.FC = () => {
   const { students, feeReceipts, recordFeePayment, branches } = useErpData();
-  const { activeBranchFilter } = useAuth();
+  const { activeBranchFilter, setActiveBranchFilter } = useAuth();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedBranch, setSelectedBranch] = useState(activeBranchFilter === 'all' ? 'all' : activeBranchFilter);
@@ -25,17 +25,16 @@ export const FeesAccountsView: React.FC = () => {
 
   // Synchronize branch selection with global filter
   useEffect(() => {
-    if (activeBranchFilter !== 'all') {
-      setSelectedBranch(activeBranchFilter);
-    }
+    setSelectedBranch(activeBranchFilter);
   }, [activeBranchFilter]);
 
   // Record Payment Modal State
   const [showPayModal, setShowPayModal] = useState(false);
-  const [targetStudentId, setTargetStudentId] = useState(students[0]?.id || '');
+  const [targetStudentId, setTargetStudentId] = useState(students.find(s => s.feesPending > 0)?.id || students[0]?.id || '');
   const [paymentAmount, setPaymentAmount] = useState(25000);
   const [paymentMethod, setPaymentMethod] = useState<FeeReceipt['paymentMethod']>('UPI');
   const [paymentNotes, setPaymentNotes] = useState('Second installment tuition fee');
+  const [modalError, setModalError] = useState<string | null>(null);
 
   // Printable Receipt Modal State
   const [receiptToPrint, setReceiptToPrint] = useState<FeeReceipt | null>(null);
@@ -68,26 +67,67 @@ export const FeesAccountsView: React.FC = () => {
   const totalOverdue = branchScopedStudents.reduce((acc, s) => acc + s.feesOverdue, 0);
   const recoveryRate = totalBilled > 0 ? ((totalCollected / totalBilled) * 100).toFixed(1) : '0';
 
+  const openRecordPaymentModal = (studentId?: string) => {
+    let candidate = studentId ? students.find(s => s.id === studentId) : undefined;
+    if (!candidate) {
+      candidate = branchScopedStudents.find(s => s.feesPending > 0) || students.find(s => s.feesPending > 0) || students[0];
+    }
+    if (candidate) {
+      setTargetStudentId(candidate.id);
+      setPaymentAmount(candidate.feesPending > 0 ? Math.min(25000, candidate.feesPending) : 0);
+    }
+    setModalError(null);
+    setShowPayModal(true);
+  };
+
   const handleRecordPaymentSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!targetStudentId || paymentAmount <= 0) {
-      setActionMessage('Please select a student and enter a valid amount.');
+    setModalError(null);
+
+    if (!targetStudentId) {
+      setModalError('Please select a student.');
       return;
     }
 
-    const createdReceipt = recordFeePayment({
-      studentId: targetStudentId,
-      amount: Number(paymentAmount),
-      paymentMethod,
-      transactionRef: `TXN-${Math.floor(100000 + Math.random() * 900000)}`,
-      notes: paymentNotes,
-    });
+    const currentStudent = students.find(s => s.id === targetStudentId);
+    if (!currentStudent) {
+      setModalError('Selected student was not found.');
+      return;
+    }
 
-    setShowPayModal(false);
-    if (createdReceipt) {
-      setReceiptToPrint(createdReceipt);
-      setActionMessage(`Receipt ${createdReceipt.receiptNo} generated successfully for ₹${createdReceipt.amount.toLocaleString()}.`);
-      setTimeout(() => setActionMessage(null), 5000);
+    if (currentStudent.feesPending <= 0) {
+      setModalError(`Student ${currentStudent.name} has no outstanding balance (₹0 due). Account is already cleared.`);
+      return;
+    }
+
+    if (paymentAmount <= 0) {
+      setModalError('Payment amount must be greater than ₹0.');
+      return;
+    }
+
+    if (paymentAmount > currentStudent.feesPending) {
+      setModalError(`Payment amount (₹${paymentAmount.toLocaleString()}) cannot exceed the outstanding balance of ₹${currentStudent.feesPending.toLocaleString()}.`);
+      return;
+    }
+
+    try {
+      const createdReceipt = recordFeePayment({
+        studentId: targetStudentId,
+        amount: Number(paymentAmount),
+        paymentMethod,
+        transactionRef: `TXN-${Math.floor(100000 + Math.random() * 900000)}`,
+        notes: paymentNotes,
+      });
+
+      setShowPayModal(false);
+      setModalError(null);
+      if (createdReceipt) {
+        setReceiptToPrint(createdReceipt);
+        setActionMessage(`Receipt ${createdReceipt.receiptNo} generated successfully for ₹${createdReceipt.amount.toLocaleString()}.`);
+        setTimeout(() => setActionMessage(null), 5000);
+      }
+    } catch (err: any) {
+      setModalError(err.message || 'Failed to record fee payment.');
     }
   };
 
@@ -125,7 +165,7 @@ export const FeesAccountsView: React.FC = () => {
           </button>
 
           <button
-            onClick={() => setShowPayModal(true)}
+            onClick={() => openRecordPaymentModal()}
             className="flex items-center gap-1.5 rounded-lg bg-blue-900 px-3.5 py-2 text-xs font-bold text-white shadow-xs hover:bg-blue-800 transition"
           >
             <Plus className="h-4 w-4" />
@@ -184,7 +224,11 @@ export const FeesAccountsView: React.FC = () => {
         <div className="flex items-center gap-2">
           <select
             value={selectedBranch}
-            onChange={e => setSelectedBranch(e.target.value)}
+            onChange={e => {
+              const newBranch = e.target.value;
+              setSelectedBranch(newBranch);
+              setActiveBranchFilter(newBranch);
+            }}
             className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-700 focus:outline-hidden"
           >
             <option value="all">All Branches</option>
@@ -223,17 +267,24 @@ export const FeesAccountsView: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {filteredStudents.slice(0, 15).map(student => (
-                <tr key={student.id} className="hover:bg-slate-50 transition">
-                  <td className="py-3 px-4">
-                    <div className="flex items-center gap-2.5">
-                      <StudentAvatar photo={student.photo || (student as any).avatar} name={student.name} size="sm" />
-                      <div>
-                        <p className="font-bold text-slate-900">{student.name}</p>
-                        <p className="font-mono text-[10px] text-blue-900">{student.studentCode}</p>
-                      </div>
-                    </div>
+              {filteredStudents.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="py-12 text-center text-slate-400">
+                    No student fee accounts found matching the current filters.
                   </td>
+                </tr>
+              ) : (
+                filteredStudents.slice(0, 15).map(student => (
+                  <tr key={student.id} className="hover:bg-slate-50 transition">
+                    <td className="py-3 px-4">
+                      <div className="flex items-center gap-2.5">
+                        <StudentAvatar photo={student.photo || (student as any).avatar} name={student.name} size="sm" />
+                        <div>
+                          <p className="font-bold text-slate-900">{student.name}</p>
+                          <p className="font-mono text-[10px] text-blue-900">{student.studentCode}</p>
+                        </div>
+                      </div>
+                    </td>
 
                   <td className="py-3 px-4">
                     <div className="font-semibold text-slate-800">{student.branchName}</div>
@@ -280,20 +331,23 @@ export const FeesAccountsView: React.FC = () => {
 
                   <td className="py-3 px-4 text-right">
                     <div className="flex items-center justify-end gap-1.5">
-                      <button
-                        onClick={() => {
-                          setTargetStudentId(student.id);
-                          setPaymentAmount(student.feesPending > 0 ? Math.min(25000, student.feesPending) : 10000);
-                          setShowPayModal(true);
-                        }}
-                        className="rounded-lg bg-blue-900 px-2.5 py-1 text-xs font-bold text-white hover:bg-blue-800 transition shadow-2xs"
-                      >
-                        Collect Fee
-                      </button>
+                      {student.feesPending === 0 ? (
+                        <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-700">
+                          <CheckCircle2 className="h-3 w-3" />
+                          Settled
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => openRecordPaymentModal(student.id)}
+                          className="rounded-lg bg-blue-900 px-2.5 py-1 text-xs font-bold text-white hover:bg-blue-800 transition shadow-2xs"
+                        >
+                          Collect Fee
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
-              ))}
+              )))}
             </tbody>
           </table>
         </div>
@@ -364,76 +418,147 @@ export const FeesAccountsView: React.FC = () => {
               </button>
             </div>
 
-            <form onSubmit={handleRecordPaymentSubmit} className="mt-4 space-y-3.5 text-xs">
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">Select Student *</label>
-                <select
-                  value={targetStudentId}
-                  onChange={e => setTargetStudentId(e.target.value)}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs"
-                >
-                  {students.slice(0, 30).map(s => (
-                    <option key={s.id} value={s.id}>
-                      {s.name} ({s.studentCode}) — Due: ₹{s.feesPending.toLocaleString()}
-                    </option>
-                  ))}
-                </select>
-              </div>
+            {(() => {
+              const targetStudent = students.find(s => s.id === targetStudentId);
+              const isSettled = !targetStudent || targetStudent.feesPending <= 0;
+              const hasInvalidAmount = !targetStudent || paymentAmount <= 0 || paymentAmount > targetStudent.feesPending;
 
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">Payment Amount (INR ₹) *</label>
-                <input
-                  type="number"
-                  required
-                  min="500"
-                  value={paymentAmount}
-                  onChange={e => setPaymentAmount(Number(e.target.value))}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm font-bold text-slate-900"
-                />
-              </div>
+              return (
+                <form onSubmit={handleRecordPaymentSubmit} className="mt-4 space-y-3.5 text-xs">
+                  {modalError && (
+                    <div className="flex items-center gap-2 rounded-lg bg-red-50 border border-red-200 p-2.5 text-xs font-semibold text-red-800">
+                      <AlertCircle className="h-4 w-4 shrink-0 text-red-600" />
+                      <span>{modalError}</span>
+                    </div>
+                  )}
 
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">Payment Mode</label>
-                <select
-                  value={paymentMethod}
-                  onChange={e => setPaymentMethod(e.target.value as FeeReceipt['paymentMethod'])}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs"
-                >
-                  <option value="UPI">UPI / QR Code</option>
-                  <option value="Cash">Cash in Hand</option>
-                  <option value="Net Banking">Net Banking / NEFT</option>
-                  <option value="Cheque">Bank Cheque</option>
-                  <option value="Card">Debit / Credit Card</option>
-                </select>
-              </div>
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">Select Student *</label>
+                    <select
+                      value={targetStudentId}
+                      onChange={e => {
+                        const newId = e.target.value;
+                        setTargetStudentId(newId);
+                        const sel = students.find(s => s.id === newId);
+                        if (sel) {
+                          setPaymentAmount(sel.feesPending > 0 ? Math.min(25000, sel.feesPending) : 0);
+                        }
+                        setModalError(null);
+                      }}
+                      className="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs text-slate-800"
+                    >
+                      {students.map(s => (
+                        <option key={s.id} value={s.id}>
+                          {s.name} ({s.studentCode || s.studentId}) — {s.feesPending === 0 ? '✓ Fully Cleared (₹0 Due)' : `Due: ₹${s.feesPending.toLocaleString()}`}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
 
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">Transaction Remarks</label>
-                <input
-                  type="text"
-                  value={paymentNotes}
-                  onChange={e => setPaymentNotes(e.target.value)}
-                  placeholder="Installment 2 tuition fee..."
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs"
-                />
-              </div>
+                  {targetStudent && (
+                    <div className={`p-3 rounded-xl border text-xs flex items-center justify-between ${
+                      targetStudent.feesPending === 0
+                        ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
+                        : targetStudent.feesOverdue > 0
+                        ? 'bg-red-50 border-red-200 text-red-900'
+                        : 'bg-slate-50 border-slate-200 text-slate-800'
+                    }`}>
+                      <div>
+                        <p className="font-bold">{targetStudent.name} • {targetStudent.branchName}</p>
+                        <p className="text-[11px] opacity-80 mt-0.5">
+                          Total: ₹{targetStudent.feesTotal.toLocaleString()} | Paid: ₹{targetStudent.feesPaid.toLocaleString()}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-[10px] uppercase font-bold tracking-wider block opacity-75">Outstanding Due</span>
+                        <span className="text-sm font-black">₹{targetStudent.feesPending.toLocaleString()}</span>
+                      </div>
+                    </div>
+                  )}
 
-              <div className="flex justify-end gap-2 pt-3 border-t border-slate-200">
-                <button
-                  type="button"
-                  onClick={() => setShowPayModal(false)}
-                  className="rounded-lg border border-slate-300 px-4 py-2 font-semibold text-slate-700 hover:bg-slate-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="rounded-lg bg-blue-900 px-5 py-2 font-bold text-white hover:bg-blue-800"
-                >
-                  Confirm &amp; Issue Receipt
-                </button>
-              </div>
-            </form>
+                  {isSettled && (
+                    <div className="flex items-center gap-2 rounded-lg bg-emerald-50 border border-emerald-200 p-2.5 text-xs text-emerald-800">
+                      <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
+                      <span>This student has no outstanding fees. Their tuition account is completely settled.</span>
+                    </div>
+                  )}
+
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="font-semibold text-slate-700">Payment Amount (INR ₹) *</label>
+                      {targetStudent && targetStudent.feesPending > 0 && (
+                        <span className="text-[11px] text-slate-500">Max: ₹{targetStudent.feesPending.toLocaleString()}</span>
+                      )}
+                    </div>
+                    <input
+                      type="number"
+                      required
+                      disabled={isSettled}
+                      min="1"
+                      max={targetStudent?.feesPending || 0}
+                      value={paymentAmount}
+                      onChange={e => {
+                        const val = Number(e.target.value);
+                        setPaymentAmount(val);
+                        if (targetStudent && val > targetStudent.feesPending) {
+                          setModalError(`Amount exceeds outstanding balance of ₹${targetStudent.feesPending.toLocaleString()}`);
+                        } else {
+                          setModalError(null);
+                        }
+                      }}
+                      className={`w-full rounded-lg border px-3 py-2 text-sm font-bold text-slate-900 ${
+                        isSettled
+                          ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed'
+                          : 'border-slate-300 focus:outline-hidden focus:border-blue-900'
+                      }`}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">Payment Mode</label>
+                    <select
+                      value={paymentMethod}
+                      onChange={e => setPaymentMethod(e.target.value as FeeReceipt['paymentMethod'])}
+                      className="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs"
+                    >
+                      <option value="UPI">UPI / QR Code</option>
+                      <option value="Cash">Cash in Hand</option>
+                      <option value="Net Banking">Net Banking / NEFT</option>
+                      <option value="Cheque">Bank Cheque</option>
+                      <option value="Card">Debit / Credit Card</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">Transaction Remarks</label>
+                    <input
+                      type="text"
+                      value={paymentNotes}
+                      onChange={e => setPaymentNotes(e.target.value)}
+                      placeholder="Installment 2 tuition fee..."
+                      className="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs"
+                    />
+                  </div>
+
+                  <div className="flex justify-end gap-2 pt-3 border-t border-slate-200">
+                    <button
+                      type="button"
+                      onClick={() => setShowPayModal(false)}
+                      className="rounded-lg border border-slate-300 px-4 py-2 font-semibold text-slate-700 hover:bg-slate-50"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={isSettled || hasInvalidAmount}
+                      className="rounded-lg bg-blue-900 px-5 py-2 font-bold text-white hover:bg-blue-800 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                    >
+                      Confirm &amp; Issue Receipt
+                    </button>
+                  </div>
+                </form>
+              );
+            })()}
           </div>
         </div>
       )}

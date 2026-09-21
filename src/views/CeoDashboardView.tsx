@@ -23,7 +23,7 @@ import {
 import { useErpData } from '../context/ErpDataContext';
 import { useAuth } from '../context/AuthContext';
 import { Student, Branch, Wing, ClassItem, Batch } from '../types';
-import { isToday, isPastOrToday, isCurrentAcademicYear, getTodayDateString } from '../utils/dateUtils';
+import { isToday, isPastOrToday, isCurrentAcademicYear, isCurrentMonth, getTodayDateString } from '../utils/dateUtils';
 import { StudentAvatar } from '../components/common/StudentAvatar';
 
 interface CeoDashboardViewProps {
@@ -85,7 +85,8 @@ export const CeoDashboardView: React.FC<CeoDashboardViewProps> = ({
 
   // High-level Metrics Calculation
   const totalStudents = filteredStudents.length;
-  const newAdmissions = filteredStudents.filter(s => isCurrentAcademicYear(s.admissionDate)).length;
+  const newAdmissions = filteredStudents.filter(s => isCurrentMonth(s.admissionDate)).length;
+  const todayAdmissions = filteredStudents.filter(s => isToday(s.admissionDate)).length;
   const todayEnquiries = filteredEnquiries.filter(e => isToday(e.date)).length;
   const totalEnquiriesCount = filteredEnquiries.length;
   const convertedEnquiries = filteredEnquiries.filter(e => e.status === 'admission').length;
@@ -215,9 +216,11 @@ export const CeoDashboardView: React.FC<CeoDashboardViewProps> = ({
             <span className="text-[11px] font-semibold text-slate-500">New Admissions</span>
             <div className="mt-1 flex items-baseline justify-between">
               <span className="text-2xl font-black text-blue-900">{newAdmissions}</span>
-              <span className="rounded bg-blue-100 px-1 py-0.2 text-[9px] font-bold text-blue-800">2026 Batch</span>
+              <span className="rounded bg-blue-100 px-1 py-0.2 text-[9px] font-bold text-blue-800">
+                {todayAdmissions > 0 ? `+${todayAdmissions} Today` : 'This Month'}
+              </span>
             </div>
-            <p className="mt-1 text-[10px] text-slate-400">Regular + Scholarship</p>
+            <p className="mt-1 text-[10px] text-slate-400">Regular + Scholarship intakes</p>
           </div>
 
           {/* 3. Today's Enquiries */}
@@ -246,10 +249,16 @@ export const CeoDashboardView: React.FC<CeoDashboardViewProps> = ({
           <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3.5">
             <span className="text-[11px] font-semibold text-slate-500">Today's Collection</span>
             <div className="mt-1 flex items-baseline justify-between">
-              <span className="text-2xl font-black text-emerald-800">₹{(todayCollection / 1000).toFixed(1)}k</span>
+              <span className="text-2xl font-black text-emerald-800">
+                {todayCollection > 0 ? `₹${(todayCollection / 1000).toFixed(1)}k` : '₹0'}
+              </span>
               <span className="text-[10px] font-bold text-emerald-700">Verified</span>
             </div>
-            <p className="mt-1 text-[10px] text-slate-400">{todayReceipts.length} official receipt{todayReceipts.length === 1 ? '' : 's'} issued</p>
+            <p className="mt-1 text-[10px] text-slate-400">
+              {todayReceipts.length > 0
+                ? `${todayReceipts.length} official receipt${todayReceipts.length === 1 ? '' : 's'} issued`
+                : 'No receipts logged today'}
+            </p>
           </div>
 
           {/* 6. Outstanding Fees */}
@@ -910,64 +919,72 @@ export const CeoDashboardView: React.FC<CeoDashboardViewProps> = ({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 bg-white">
-              {branches.map(branch => {
-                const util = ((branch.studentCount / branch.capacity) * 100).toFixed(0);
-                return (
-                  <tr key={branch.id} className="hover:bg-slate-50/80 transition">
-                    <td className="py-3 px-4 font-bold text-slate-900 text-sm">
-                      {branch.name}
-                    </td>
-                    <td className="py-3 px-4">
-                      <span className="rounded bg-slate-100 px-2 py-0.5 font-mono text-[10px] font-bold text-slate-700">
-                        {branch.code}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4 text-right font-black text-slate-900">
-                      {branch.studentCount}
-                    </td>
-                    <td className="py-3 px-4 text-right">
-                      <div className="inline-flex items-center gap-1.5">
-                        <div className="h-1.5 w-16 rounded-full bg-slate-100 overflow-hidden">
-                          <div
-                            className="h-full bg-blue-900 rounded-full"
-                            style={{ width: `${util}%` }}
-                          />
+              {filteredBranches.length === 0 ? (
+                <tr>
+                  <td colSpan={10} className="py-8 text-center text-xs text-slate-500">
+                    No operating branch records found for the selected filter.
+                  </td>
+                </tr>
+              ) : (
+                filteredBranches.map(branch => {
+                  const util = ((branch.studentCount / branch.capacity) * 100).toFixed(0);
+                  return (
+                    <tr key={branch.id} className="hover:bg-slate-50/80 transition">
+                      <td className="py-3 px-4 font-bold text-slate-900 text-sm">
+                        {branch.name}
+                      </td>
+                      <td className="py-3 px-4">
+                        <span className="rounded bg-slate-100 px-2 py-0.5 font-mono text-[10px] font-bold text-slate-700">
+                          {branch.code}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 text-right font-black text-slate-900">
+                        {branch.studentCount}
+                      </td>
+                      <td className="py-3 px-4 text-right">
+                        <div className="inline-flex items-center gap-1.5">
+                          <div className="h-1.5 w-16 rounded-full bg-slate-100 overflow-hidden">
+                            <div
+                              className="h-full bg-blue-900 rounded-full"
+                              style={{ width: `${util}%` }}
+                            />
+                          </div>
+                          <span className="font-semibold text-slate-700">{util}%</span>
                         </div>
-                        <span className="font-semibold text-slate-700">{util}%</span>
-                      </div>
-                    </td>
-                    <td className="py-3 px-4 text-right font-bold text-slate-900">
-                      ₹{branch.monthlyRevenue.toLocaleString()}
-                    </td>
-                    <td className="py-3 px-4 text-right">
-                      <span className={`font-bold ${branch.collectionRate >= 90 ? 'text-emerald-700' : 'text-amber-700'}`}>
-                        {branch.collectionRate}%
-                      </span>
-                    </td>
-                    <td className="py-3 px-4 text-right">
-                      <span className={`font-bold ${branch.attendanceRate >= 85 ? 'text-emerald-700' : 'text-amber-700'}`}>
-                        {branch.attendanceRate}%
-                      </span>
-                    </td>
-                    <td className="py-3 px-4 text-right font-semibold text-slate-700">
-                      {branch.facultyCount}
-                    </td>
-                    <td className="py-3 px-4 text-center">
-                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700 border border-emerald-200">
-                        Active
-                      </span>
-                    </td>
-                    <td className="py-3 px-4 text-center">
-                      <button
-                        onClick={() => handleBranchClick(branch.id)}
-                        className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-blue-900 hover:bg-blue-50 transition shadow-2xs"
-                      >
-                        Drill Down
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
+                      </td>
+                      <td className="py-3 px-4 text-right font-bold text-slate-900">
+                        ₹{branch.monthlyRevenue.toLocaleString()}
+                      </td>
+                      <td className="py-3 px-4 text-right">
+                        <span className={`font-bold ${branch.collectionRate >= 90 ? 'text-emerald-700' : 'text-amber-700'}`}>
+                          {branch.collectionRate}%
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 text-right">
+                        <span className={`font-bold ${branch.attendanceRate >= 85 ? 'text-emerald-700' : 'text-amber-700'}`}>
+                          {branch.attendanceRate}%
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 text-right font-semibold text-slate-700">
+                        {branch.facultyCount}
+                      </td>
+                      <td className="py-3 px-4 text-center">
+                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700 border border-emerald-200">
+                          Active
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 text-center">
+                        <button
+                          onClick={() => handleBranchClick(branch.id)}
+                          className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-blue-900 hover:bg-blue-50 transition shadow-2xs"
+                        >
+                          Drill Down
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
             </tbody>
           </table>
         </div>

@@ -50,6 +50,15 @@ export const AttendanceManagementView: React.FC = () => {
     return rec ? rec.status : 'present';
   };
 
+  // Synchronous Attendance Percentage calculation for active batch
+  const presentStudentsCount = batchStudents.filter(s => {
+    const st = getStudentStatus(s.id);
+    return st === 'present' || st === 'late';
+  }).length;
+  const batchSynchronousAttendancePercent = batchStudents.length > 0
+    ? Math.round((presentStudentsCount / batchStudents.length) * 100)
+    : 0;
+
   const handleToggleStatus = (studentId: string, status: AttendanceStatus) => {
     markStudentAttendance(studentId, selectedDate, status);
   };
@@ -196,7 +205,7 @@ export const AttendanceManagementView: React.FC = () => {
                 </p>
               </div>
               <span className="rounded bg-blue-100 px-2.5 py-0.5 text-xs font-bold text-blue-900">
-                Avg: {activeBatch?.attendanceToday}%
+                Today: {batchSynchronousAttendancePercent}%
               </span>
             </div>
 
@@ -213,62 +222,72 @@ export const AttendanceManagementView: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {batchStudents.map(student => {
-                    const currentStatus = getStudentStatus(student.id);
-                    return (
-                      <tr key={student.id} className="hover:bg-slate-50 transition">
-                        <td className="py-2.5 px-4 font-mono font-bold text-blue-900">{student.studentId}</td>
-                        <td className="py-2.5 px-4">
-                          <div className="flex items-center gap-2.5">
-                            <StudentAvatar photo={student.photo} name={student.name} size="sm" />
-                            <span className="font-bold text-slate-900">{student.name}</span>
-                          </div>
-                        </td>
-                        <td className="py-2.5 px-4 text-slate-600 font-mono text-[11px]">
-                          {student.parentPhone}
-                        </td>
-                        <td className="py-2.5 px-4 text-center font-bold">
-                          <span className={student.attendanceRate < 75 ? 'text-red-700' : 'text-emerald-700'}>
-                            {student.attendanceRate}%
-                          </span>
-                        </td>
-                        <td className="py-2.5 px-4 text-center">
-                          <span className={`inline-block rounded px-2.5 py-0.5 text-[10px] font-bold ${
-                            currentStatus === 'present'
-                              ? 'bg-emerald-100 text-emerald-800'
-                              : currentStatus === 'absent'
-                              ? 'bg-red-100 text-red-800'
-                              : currentStatus === 'late'
-                              ? 'bg-amber-100 text-amber-800'
-                              : 'bg-blue-100 text-blue-800'
-                          }`}>
-                            {currentStatus.toUpperCase()}
-                          </span>
-                        </td>
-                        <td className="py-2.5 px-4 text-right">
-                          <div className="inline-flex rounded-lg border border-slate-200 bg-white p-0.5">
-                            {(['present', 'absent', 'late', 'excused'] as AttendanceStatus[]).map(st => (
-                              <button
-                                key={st}
-                                onClick={() => handleToggleStatus(student.id, st)}
-                                className={`px-2 py-0.5 text-[10px] font-bold rounded transition capitalize ${
-                                  currentStatus === st
-                                    ? st === 'present'
-                                      ? 'bg-emerald-700 text-white'
-                                      : st === 'absent'
-                                      ? 'bg-red-700 text-white'
-                                      : 'bg-amber-600 text-white'
-                                    : 'text-slate-500 hover:text-slate-900'
-                                }`}
-                              >
-                                {st[0].toUpperCase()}
-                              </button>
-                            ))}
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
+                  {batchStudents.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="py-12 text-center text-slate-400">
+                        No students enrolled in this batch roster yet.
+                      </td>
+                    </tr>
+                  ) : (
+                    batchStudents.map(student => {
+                      const currentStatus = getStudentStatus(student.id);
+                      return (
+                        <tr key={student.id} className="hover:bg-slate-50 transition">
+                          <td className="py-2.5 px-4 font-mono font-bold text-blue-900">{student.studentId}</td>
+                          <td className="py-2.5 px-4">
+                            <div className="flex items-center gap-2.5">
+                              <StudentAvatar photo={student.photo} name={student.name} size="sm" />
+                              <span className="font-bold text-slate-900">{student.name}</span>
+                            </div>
+                          </td>
+                          <td className="py-2.5 px-4 text-slate-600 font-mono text-[11px]">
+                            {student.parentPhone}
+                          </td>
+                          <td className="py-2.5 px-4 text-center font-bold">
+                            <span className={student.attendanceRate < 75 ? 'text-red-700' : 'text-emerald-700'}>
+                              {student.attendanceRate}%
+                            </span>
+                          </td>
+                          <td className="py-2.5 px-4 text-center">
+                            <span className={`inline-block rounded px-2.5 py-0.5 text-[10px] font-bold ${
+                              currentStatus === 'present'
+                                ? 'bg-emerald-100 text-emerald-800'
+                                : currentStatus === 'absent'
+                                ? 'bg-red-100 text-red-800'
+                                : currentStatus === 'late'
+                                ? 'bg-amber-100 text-amber-800'
+                                : 'bg-blue-100 text-blue-800'
+                            }`}>
+                              {currentStatus.toUpperCase()}
+                            </span>
+                          </td>
+                          <td className="py-2.5 px-4 text-right">
+                            <div className="inline-flex rounded-lg border border-slate-200 bg-white p-0.5">
+                              {(['present', 'absent', 'late', 'leave'] as AttendanceStatus[]).map(st => (
+                                <button
+                                  key={st}
+                                  onClick={() => handleToggleStatus(student.id, st)}
+                                  className={`px-2 py-0.5 text-[10px] font-bold rounded transition capitalize ${
+                                    currentStatus === st
+                                      ? st === 'present'
+                                        ? 'bg-emerald-700 text-white'
+                                        : st === 'absent'
+                                        ? 'bg-red-700 text-white'
+                                        : st === 'late'
+                                        ? 'bg-amber-600 text-white'
+                                        : 'bg-blue-700 text-white'
+                                      : 'text-slate-500 hover:text-slate-900'
+                                  }`}
+                                >
+                                  {st === 'leave' ? 'Lv' : st[0].toUpperCase()}
+                                </button>
+                              ))}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
                 </tbody>
               </table>
             </div>

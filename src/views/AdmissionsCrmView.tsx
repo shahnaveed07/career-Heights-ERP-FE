@@ -23,8 +23,8 @@ import { Enquiry, LeadStatus } from '../types';
 import { getTodayDateString, getFutureDateString, isPastOrToday } from '../utils/dateUtils';
 
 export const AdmissionsCrmView: React.FC = () => {
-  const { enquiries, addEnquiry, updateEnquiryStatus, convertEnquiryToAdmission, branches } = useErpData();
-  const { activeBranchFilter } = useAuth();
+  const { enquiries, addEnquiry, updateEnquiryStatus, convertEnquiryToAdmission, branches, batches } = useErpData();
+  const { activeBranchFilter, setActiveBranchFilter } = useAuth();
 
   const [viewMode, setViewMode] = useState<'kanban' | 'table'>('kanban');
   const [searchTerm, setSearchTerm] = useState('');
@@ -32,11 +32,9 @@ export const AdmissionsCrmView: React.FC = () => {
   const [selectedSource, setSelectedSource] = useState<string>('all');
   const [formError, setFormError] = useState<string | null>(null);
 
-  // Synchronize branch filter
+  // Synchronize branch filter whenever global navbar changes
   useEffect(() => {
-    if (activeBranchFilter !== 'all') {
-      setSelectedBranch(activeBranchFilter);
-    }
+    setSelectedBranch(activeBranchFilter);
   }, [activeBranchFilter]);
 
   // New Lead Modal
@@ -54,8 +52,26 @@ export const AdmissionsCrmView: React.FC = () => {
     notes: '',
   });
 
-  // Convert Modal confirmation
+  // Convert Modal state
   const [convertModalLead, setConvertModalLead] = useState<Enquiry | null>(null);
+  const [convertBranchId, setConvertBranchId] = useState<string>('');
+  const [convertBatchId, setConvertBatchId] = useState<string>('');
+  const [convertSource, setConvertSource] = useState<string>('Direct Walk-in');
+  const [convertFeesTotal, setConvertFeesTotal] = useState<number>(95000);
+  const [convertFeesPaid, setConvertFeesPaid] = useState<number>(35000);
+
+  const openConvertModal = (lead: Enquiry) => {
+    setConvertModalLead(lead);
+    const bId = lead.branchId || branches.find(b => b.name === lead.branchName)?.id || branches[0]?.id || 'b-hdw';
+    setConvertBranchId(bId);
+    const matchedBatch = batches.find(b => b.branchId === bId && (b.className === lead.targetCourse || b.name.toLowerCase().includes(lead.targetCourse?.toLowerCase() || '')))
+      || batches.find(b => b.branchId === bId)
+      || batches[0];
+    setConvertBatchId(matchedBatch?.id || '');
+    setConvertSource(lead.source || 'Direct Walk-in');
+    setConvertFeesTotal(95000);
+    setConvertFeesPaid(35000);
+  };
 
   const stages: { id: LeadStatus; label: string; color: string; bg: string }[] = [
     { id: 'new', label: 'New Inflow', color: 'text-blue-700', bg: 'bg-blue-50 border-blue-200' },
@@ -118,7 +134,13 @@ export const AdmissionsCrmView: React.FC = () => {
 
   const handleConfirmConvert = () => {
     if (!convertModalLead) return;
-    convertEnquiryToAdmission(convertModalLead.id);
+    convertEnquiryToAdmission(convertModalLead.id, {
+      branchId: convertBranchId,
+      batchId: convertBatchId,
+      admissionSource: convertSource,
+      feesTotal: Number(convertFeesTotal),
+      feesPaid: Number(convertFeesPaid),
+    });
     setConvertModalLead(null);
   };
 
@@ -216,7 +238,11 @@ export const AdmissionsCrmView: React.FC = () => {
         <div className="flex items-center gap-2">
           <select
             value={selectedBranch}
-            onChange={e => setSelectedBranch(e.target.value)}
+            onChange={e => {
+              const newBranch = e.target.value;
+              setSelectedBranch(newBranch);
+              setActiveBranchFilter(newBranch);
+            }}
             className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-700 focus:outline-hidden"
           >
             <option value="all">All Branches</option>
@@ -312,7 +338,7 @@ export const AdmissionsCrmView: React.FC = () => {
                           <div className="flex items-center gap-1">
                             {stage.id !== 'admission' && (
                               <button
-                                onClick={() => setConvertModalLead(lead)}
+                                onClick={() => openConvertModal(lead)}
                                 className="rounded bg-emerald-600 px-1.5 py-0.5 font-bold text-white hover:bg-emerald-700"
                                 title="Convert Lead to Full Admission"
                               >
@@ -357,49 +383,57 @@ export const AdmissionsCrmView: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {filteredEnquiries.map(lead => (
-                  <tr key={lead.id} className="hover:bg-slate-50 transition">
-                    <td className="py-3 px-4">
-                      <p className="font-bold text-slate-900">{lead.name || lead.studentName}</p>
-                      <p className="text-[10px] text-slate-400">Parent: {lead.parentName}</p>
-                    </td>
-                    <td className="py-3 px-4 font-mono text-slate-700">{lead.phone}</td>
-                    <td className="py-3 px-4">
-                      <div className="font-semibold text-slate-800">{lead.targetCourse}</div>
-                      <div className="text-[10px] text-slate-500">{lead.branchName}</div>
-                    </td>
-                    <td className="py-3 px-4">
-                      <span className="rounded bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-700">
-                        {lead.source}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4 text-slate-700">{lead.assignedCounsellor || lead.counsellorName}</td>
-                    <td className="py-3 px-4 font-medium text-slate-800">{lead.nextFollowUp}</td>
-                    <td className="py-3 px-4 text-center">
-                      <span className={`inline-block rounded px-2 py-0.5 text-[10px] font-bold ${
-                        lead.status === 'admission'
-                          ? 'bg-emerald-100 text-emerald-800'
-                          : lead.status === 'lost'
-                          ? 'bg-slate-200 text-slate-600'
-                          : 'bg-blue-100 text-blue-800'
-                      }`}>
-                        {lead.status.toUpperCase()}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4 text-right">
-                      {lead.status !== 'admission' ? (
-                        <button
-                          onClick={() => setConvertModalLead(lead)}
-                          className="rounded-lg bg-emerald-600 px-2.5 py-1 text-xs font-bold text-white hover:bg-emerald-700 transition"
-                        >
-                          Enrol &rarr;
-                        </button>
-                      ) : (
-                        <span className="text-emerald-700 font-bold text-xs">Admitted</span>
-                      )}
+                {filteredEnquiries.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="py-12 text-center text-slate-400">
+                      No admission leads match the current filters.
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  filteredEnquiries.map(lead => (
+                    <tr key={lead.id} className="hover:bg-slate-50 transition">
+                      <td className="py-3 px-4">
+                        <p className="font-bold text-slate-900">{lead.name || lead.studentName}</p>
+                        <p className="text-[10px] text-slate-400">Parent: {lead.parentName}</p>
+                      </td>
+                      <td className="py-3 px-4 font-mono text-slate-700">{lead.phone}</td>
+                      <td className="py-3 px-4">
+                        <div className="font-semibold text-slate-800">{lead.targetCourse}</div>
+                        <div className="text-[10px] text-slate-500">{lead.branchName}</div>
+                      </td>
+                      <td className="py-3 px-4">
+                        <span className="rounded bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-700">
+                          {lead.source}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 text-slate-700">{lead.assignedCounsellor || lead.counsellorName}</td>
+                      <td className="py-3 px-4 font-medium text-slate-800">{lead.nextFollowUp}</td>
+                      <td className="py-3 px-4 text-center">
+                        <span className={`inline-block rounded px-2 py-0.5 text-[10px] font-bold ${
+                          lead.status === 'admission'
+                            ? 'bg-emerald-100 text-emerald-800'
+                            : lead.status === 'lost'
+                            ? 'bg-slate-200 text-slate-600'
+                            : 'bg-blue-100 text-blue-800'
+                        }`}>
+                          {lead.status.toUpperCase()}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 text-right">
+                        {lead.status !== 'admission' ? (
+                          <button
+                            onClick={() => openConvertModal(lead)}
+                            className="rounded-lg bg-emerald-600 px-2.5 py-1 text-xs font-bold text-white hover:bg-emerald-700 transition"
+                          >
+                            Enrol &rarr;
+                          </button>
+                        ) : (
+                          <span className="text-emerald-700 font-bold text-xs">Admitted</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
@@ -409,26 +443,102 @@ export const AdmissionsCrmView: React.FC = () => {
       {/* Convert Lead to Admission Confirmation Modal */}
       {convertModalLead && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-xs">
-          <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
+          <div className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700">
                 <CheckCircle2 className="h-6 w-6" />
               </div>
               <div>
                 <h3 className="text-base font-bold text-slate-900">Confirm Admission Conversion</h3>
-                <p className="text-xs text-slate-500">Transform lead to enrolled student record</p>
+                <p className="text-xs text-slate-500">Transform lead to enrolled student record with designated branch &amp; batch</p>
               </div>
             </div>
 
-            <div className="mt-4 rounded-xl bg-slate-50 p-3.5 text-xs space-y-1.5 border border-slate-200">
-              <p><strong>Candidate:</strong> {convertModalLead.name || convertModalLead.studentName}</p>
+            <div className="mt-4 rounded-xl bg-slate-50 p-3 text-xs space-y-1 border border-slate-200">
+              <div className="flex justify-between">
+                <span><strong>Candidate:</strong> {convertModalLead.name || convertModalLead.studentName}</span>
+                <span className="text-slate-500"><strong>Counsellor:</strong> {convertModalLead.assignedCounsellor || convertModalLead.counsellorName}</span>
+              </div>
               <p><strong>Parent / Phone:</strong> {convertModalLead.parentName} ({convertModalLead.phone})</p>
-              <p><strong>Course:</strong> {convertModalLead.targetCourse}</p>
-              <p><strong>Branch:</strong> {convertModalLead.branchName}</p>
+              <p><strong>Target Course:</strong> {convertModalLead.targetCourse}</p>
             </div>
 
-            <p className="mt-3 text-xs text-slate-600">
-              This will automatically issue a permanent Student ID (e.g. <code>CH-2026-XXX</code>), generate a tuition ledger, and update CRM pipeline conversion metrics.
+            <div className="mt-4 space-y-3 text-xs">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Campus Branch *</label>
+                  <select
+                    value={convertBranchId}
+                    onChange={e => {
+                      const newBranchId = e.target.value;
+                      setConvertBranchId(newBranchId);
+                      const matchingBatch = batches.find(b => b.branchId === newBranchId) || batches[0];
+                      if (matchingBatch) setConvertBatchId(matchingBatch.id);
+                    }}
+                    className="w-full rounded-lg border border-slate-200 bg-white p-2 text-xs text-slate-800 focus:outline-hidden focus:border-blue-900"
+                  >
+                    {branches.map(b => (
+                      <option key={b.id} value={b.id}>{b.name} Campus</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Assigned Batch *</label>
+                  <select
+                    value={convertBatchId}
+                    onChange={e => setConvertBatchId(e.target.value)}
+                    className="w-full rounded-lg border border-slate-200 bg-white p-2 text-xs text-slate-800 focus:outline-hidden focus:border-blue-900"
+                  >
+                    {batches
+                      .filter(b => b.branchId === convertBranchId)
+                      .map(b => (
+                        <option key={b.id} value={b.id}>{b.name} ({b.className})</option>
+                      ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Admission Source *</label>
+                  <select
+                    value={convertSource}
+                    onChange={e => setConvertSource(e.target.value)}
+                    className="w-full rounded-lg border border-slate-200 bg-white p-2 text-xs text-slate-800 focus:outline-hidden focus:border-blue-900"
+                  >
+                    <option value="Direct Walk-in">Direct Walk-in</option>
+                    <option value="CHTQ Scholarship">CHTQ Scholarship</option>
+                    <option value="Referral">Referral</option>
+                    <option value="Website">Website</option>
+                    <option value="Seminar">Seminar</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Tuition Agreed (₹)</label>
+                  <input
+                    type="number"
+                    value={convertFeesTotal}
+                    onChange={e => setConvertFeesTotal(Number(e.target.value))}
+                    className="w-full rounded-lg border border-slate-200 bg-white p-2 text-xs text-slate-800 focus:outline-hidden focus:border-blue-900"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Initial Downpayment (₹)</label>
+                  <input
+                    type="number"
+                    value={convertFeesPaid}
+                    onChange={e => setConvertFeesPaid(Number(e.target.value))}
+                    className="w-full rounded-lg border border-slate-200 bg-white p-2 text-xs text-slate-800 focus:outline-hidden focus:border-blue-900"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <p className="mt-3 text-[11px] text-slate-500">
+              Generates a permanent sequential Student ID (e.g. <code>CH-2026-XXX</code>), enrolls into the selected batch roster, and automatically updates CRM metrics.
             </p>
 
             <div className="mt-5 flex justify-end gap-2">

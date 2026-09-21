@@ -24,6 +24,13 @@ export function isCurrentMonth(dateStr?: string | null): boolean {
   return dateStr.startsWith(currentMonthPrefix);
 }
 
+// Check if a date string falls within a specific year-month (e.g. 'YYYY-MM') or current month by default
+export function isDateInMonth(dateStr?: string | null, targetYearMonth?: string): boolean {
+  if (!dateStr) return false;
+  const prefix = targetYearMonth || getTodayDateString().substring(0, 7);
+  return dateStr.startsWith(prefix);
+}
+
 // Check if a date string is in the current year
 export function isCurrentYear(dateStr?: string | null): boolean {
   if (!dateStr) return false;

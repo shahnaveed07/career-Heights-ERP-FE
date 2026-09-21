@@ -76,8 +76,8 @@ export function generateNextReceiptNo(existingReceipts: FeeReceipt[]): {
     }
   }
 
-  // If previous receipts were e.g. 893, next is 894; if none, start at 1001
-  const nextNum = maxNum > 0 ? maxNum + 1 : 1001;
+  // If previous receipts exist, next is maxNum + 1; otherwise start at 1
+  const nextNum = maxNum > 0 ? maxNum + 1 : 1;
   const padded = String(nextNum).padStart(6, '0');
 
   return {

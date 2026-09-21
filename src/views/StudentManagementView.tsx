@@ -31,7 +31,7 @@ interface StudentManagementViewProps {
 
 export const StudentManagementView: React.FC<StudentManagementViewProps> = ({ initialStudentId }) => {
   const { students, branches, batches, addStudent, updateStudent, testResults, documents } = useErpData();
-  const { activeBranchFilter } = useAuth();
+  const { activeBranchFilter, setActiveBranchFilter } = useAuth();
 
   // Search and Filter states
   const [searchTerm, setSearchTerm] = useState('');
@@ -41,11 +41,11 @@ export const StudentManagementView: React.FC<StudentManagementViewProps> = ({ in
   const [selectedScholarship, setSelectedScholarship] = useState<string>('all');
   const [formError, setFormError] = useState<string | null>(null);
 
-  // Synchronize branch filter
+  // Synchronize branch filter whenever global navbar changes
   useEffect(() => {
-    if (activeBranchFilter !== 'all') {
-      setSelectedBranch(activeBranchFilter);
-    }
+    setSelectedBranch(activeBranchFilter);
+    setSelectedBatch('all');
+    setCurrentPage(1);
   }, [activeBranchFilter]);
 
   // Pagination
@@ -196,7 +196,10 @@ export const StudentManagementView: React.FC<StudentManagementViewProps> = ({ in
             <select
               value={selectedBranch}
               onChange={e => {
-                setSelectedBranch(e.target.value);
+                const newBranch = e.target.value;
+                setSelectedBranch(newBranch);
+                setActiveBranchFilter(newBranch);
+                setSelectedBatch('all');
                 setCurrentPage(1);
               }}
               className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-700 bg-white focus:border-blue-900 focus:outline-hidden"
@@ -219,9 +222,11 @@ export const StudentManagementView: React.FC<StudentManagementViewProps> = ({ in
               className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-700 bg-white focus:border-blue-900 focus:outline-hidden"
             >
               <option value="all">All Batches</option>
-              {batches.map(b => (
-                <option key={b.id} value={b.id}>{b.branchName}: {b.name}</option>
-              ))}
+              {batches
+                .filter(b => selectedBranch === 'all' || b.branchId === selectedBranch)
+                .map(b => (
+                  <option key={b.id} value={b.id}>{b.branchName}: {b.name}</option>
+                ))}
             </select>
           </div>
 
