@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useErpData } from '../context/ErpDataContext';
+import { StudentAvatar } from '../components/common/StudentAvatar';
 
 export const FacultyPortalView: React.FC = () => {
   const { currentUser } = useAuth();
@@ -37,9 +38,10 @@ export const FacultyPortalView: React.FC = () => {
       <div className="rounded-2xl bg-gradient-to-r from-blue-900 to-slate-900 p-6 text-white shadow-md">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="flex items-center gap-4">
-            <img
-              src={currentUser?.avatar || facultyProfile?.photo}
-              alt="Faculty"
+            <StudentAvatar
+              photo={currentUser?.avatar || facultyProfile?.photo}
+              name={currentUser?.name || facultyProfile?.name || 'Faculty Member'}
+              size="xl"
               className="h-16 w-16 rounded-full border-2 border-white/20 object-cover"
             />
             <div>

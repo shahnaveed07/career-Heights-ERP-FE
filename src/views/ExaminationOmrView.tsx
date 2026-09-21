@@ -233,10 +233,15 @@ export const ExaminationOmrView: React.FC = () => {
         <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-xs space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-200 pb-4">
             <div>
-              <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                <Scan className="h-5 w-5 text-blue-900" />
-                <span>Optical Mark Recognition (OMR) Rapid Ingestion Studio</span>
-              </h3>
+              <div className="flex items-center gap-2">
+                <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                  <Scan className="h-5 w-5 text-blue-900" />
+                  <span>Optical Mark Recognition (OMR) Rapid Ingestion Studio</span>
+                </h3>
+                <span className="rounded-md border border-purple-200 bg-purple-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-purple-800">
+                  Simulation Mode
+                </span>
+              </div>
               <p className="text-xs text-slate-500">
                 Process scanned physical bubble sheets with automatic answer key matching, error-margin validation, and rank compilation.
               </p>

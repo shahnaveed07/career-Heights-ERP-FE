@@ -137,6 +137,21 @@ export const CommunicationCentreView: React.FC = () => {
         </div>
       </div>
 
+      {/* Demo Simulation Badge */}
+      <div className="rounded-xl border border-blue-200 bg-blue-50/70 p-3 text-xs text-blue-900 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 shadow-2xs">
+        <div className="flex items-center gap-2">
+          <span className="rounded bg-blue-900 text-white text-[10px] font-bold px-2 py-0.5 uppercase tracking-wider">
+            Simulation Mode
+          </span>
+          <span className="font-medium">
+            Outbound SMS &amp; WhatsApp gateway dispatch is simulated locally for client demo.
+          </span>
+        </div>
+        <span className="text-[11px] text-blue-700 font-semibold">
+          No external carrier charges incurred
+        </span>
+      </div>
+
       {broadcastSentNotification && (
         <div className="flex items-center gap-2 rounded-xl bg-emerald-50 border border-emerald-200 p-4 text-xs font-bold text-emerald-800">
           <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />

@@ -56,7 +56,10 @@ export const DocumentVaultView: React.FC = () => {
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1.5 text-xs font-bold text-blue-900">
+            Simulated KYC Vault (Local Sandbox)
+          </span>
           <span className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-bold text-amber-800">
             {pendingCount} Verifications Awaiting Review
           </span>

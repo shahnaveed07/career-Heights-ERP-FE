@@ -326,7 +326,7 @@ export const AttendanceManagementView: React.FC = () => {
                   <tr key={emp.id} className="hover:bg-slate-50 transition">
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-2">
-                        <img src={emp.photo} alt={emp.name} className="h-7 w-7 rounded-full object-cover" />
+                        <StudentAvatar photo={emp.photo} name={emp.name} size="sm" />
                         <div>
                           <p className="font-bold text-slate-900">{emp.name}</p>
                           <p className="text-[10px] text-slate-400">{emp.phone}</p>

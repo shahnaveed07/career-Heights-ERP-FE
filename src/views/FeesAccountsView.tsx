@@ -13,6 +13,7 @@ import { useErpData } from '../context/ErpDataContext';
 import { useAuth } from '../context/AuthContext';
 import { FeeReceipt } from '../types';
 import { StudentAvatar } from '../components/common/StudentAvatar';
+import { generateNextTransactionRef } from '../utils/idGenerators';
 
 export const FeesAccountsView: React.FC = () => {
   const { students, feeReceipts, recordFeePayment, branches } = useErpData();
@@ -115,7 +116,7 @@ export const FeesAccountsView: React.FC = () => {
         studentId: targetStudentId,
         amount: Number(paymentAmount),
         paymentMethod,
-        transactionRef: `TXN-${Math.floor(100000 + Math.random() * 900000)}`,
+        transactionRef: generateNextTransactionRef(feeReceipts),
         notes: paymentNotes,
       });
 

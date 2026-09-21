@@ -110,7 +110,7 @@ export interface Student {
   schoolName: string;
   previousPercentage: number;
   admissionDate: string;
-  admissionSource: 'Direct Walk-in' | 'CHTQ Scholarship' | 'Referral' | 'Website' | 'Seminar';
+  admissionSource: 'Direct Walk-in' | 'CHTQ Scholarship' | 'Referral' | 'Website' | 'Seminar' | string;
   scholarshipType: 'None' | 'CHTQ 100%' | 'CHTQ 75%' | 'CHTQ 50%' | 'Merit Waiver' | 'BPL Concession';
   scholarshipPercent: number;
   status: 'active' | 'at_risk' | 'inactive' | 'transferred';

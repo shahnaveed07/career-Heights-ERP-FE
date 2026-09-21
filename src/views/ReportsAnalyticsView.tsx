@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   BarChart3,
   TrendingUp,
@@ -9,17 +9,39 @@ import {
   Award,
   CheckCircle2,
   FileSpreadsheet,
+  AlertCircle,
 } from 'lucide-react';
 import { useErpData } from '../context/ErpDataContext';
+import { useAuth } from '../context/AuthContext';
 
 export const ReportsAnalyticsView: React.FC = () => {
   const { branches, students, enquiries, chtqSchools } = useErpData();
+  const { activeBranchFilter } = useAuth();
+  const [downloadSuccess, setDownloadSuccess] = useState<string | null>(null);
 
-  const totalRevenue = branches.reduce((acc, b) => acc + b.monthlyRevenue, 0);
-  const totalStudents = students.length;
-  const totalEnquiries = enquiries.length;
-  const enrolledEnquiries = enquiries.filter(l => l.status === 'admission').length;
-  const overallConversion = totalEnquiries > 0 ? ((enrolledEnquiries / totalEnquiries) * 100).toFixed(1) : '35.4';
+  const filteredBranches = activeBranchFilter === 'all'
+    ? branches
+    : branches.filter(b => b.id === activeBranchFilter);
+
+  const filteredStudents = activeBranchFilter === 'all'
+    ? students
+    : students.filter(s => s.branchId === activeBranchFilter);
+
+  const filteredEnquiries = activeBranchFilter === 'all'
+    ? enquiries
+    : enquiries.filter(e => e.branchId === activeBranchFilter);
+
+  const totalRevenue = filteredBranches.reduce((acc, b) => acc + b.monthlyRevenue, 0);
+  const totalStudents = filteredStudents.length;
+  const totalEnquiries = filteredEnquiries.length;
+  const enrolledEnquiries = filteredEnquiries.filter(l => l.status === 'admission').length;
+  const overallConversion = totalEnquiries > 0 ? ((enrolledEnquiries / totalEnquiries) * 100).toFixed(1) : '0.0';
+
+  const handleExport = () => {
+    const branchName = activeBranchFilter === 'all' ? 'All Campuses' : (filteredBranches[0]?.name || 'Campus');
+    setDownloadSuccess(`Consolidated Executive Dossier for ${branchName} compiled and exported.`);
+    setTimeout(() => setDownloadSuccess(null), 4000);
+  };
 
   return (
     <div className="space-y-6">
@@ -40,7 +62,7 @@ export const ReportsAnalyticsView: React.FC = () => {
         </div>
 
         <button
-          onClick={() => alert(`Consolidated Annual Executive Dossier (Excel/PDF) compiled and downloaded.`)}
+          onClick={handleExport}
           className="flex items-center gap-1.5 rounded-lg bg-blue-900 px-3.5 py-2 text-xs font-bold text-white hover:bg-blue-800 shadow-xs"
         >
           <FileSpreadsheet className="h-4 w-4" />
@@ -48,9 +70,20 @@ export const ReportsAnalyticsView: React.FC = () => {
         </button>
       </div>
 
+      {downloadSuccess && (
+        <div className="flex items-center gap-2 rounded-xl bg-emerald-50 border border-emerald-200 p-3 text-xs text-emerald-800 font-semibold">
+          <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+          <span>{downloadSuccess}</span>
+        </div>
+      )}
+
       {/* Cross-Branch Comparative Performance Table */}
       <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-xs space-y-4">
-        <h3 className="text-sm font-bold text-slate-900">Multi-Branch Institutional Scorecard (September 2026)</h3>
+        <h3 className="text-sm font-bold text-slate-900">
+          {activeBranchFilter === 'all'
+            ? 'Multi-Branch Institutional Scorecard (September 2026)'
+            : `${filteredBranches[0]?.name || 'Branch'} Campus Scorecard (September 2026)`}
+        </h3>
 
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-slate-200 text-xs">
@@ -66,36 +99,47 @@ export const ReportsAnalyticsView: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {branches.map(b => (
-                <tr key={b.id} className="hover:bg-slate-50 transition">
-                  <td className="py-3 px-4">
-                    <p className="font-bold text-slate-900">{b.name} Campus</p>
-                    <p className="text-[10px] text-slate-400">{b.city} • Head: {b.headFaculty}</p>
-                  </td>
-                  <td className="py-3 px-4 text-center font-bold text-slate-900">{b.studentCount}</td>
-                  <td className="py-3 px-4 text-center">
-                    <div className="flex items-center justify-center gap-1.5">
-                      <div className="w-16 h-2 bg-slate-100 rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-blue-900 rounded-full"
-                          style={{ width: `${(b.studentCount / b.capacity) * 100}%` }}
-                        />
-                      </div>
-                      <span className="font-bold text-slate-700">{((b.studentCount / b.capacity) * 100).toFixed(0)}%</span>
-                    </div>
-                  </td>
-                  <td className="py-3 px-4 text-center font-bold text-emerald-700">{b.attendanceRate}%</td>
-                  <td className="py-3 px-4 text-right font-black text-slate-900">
-                    ₹{(b.monthlyRevenue / 100000).toFixed(2)}L
-                  </td>
-                  <td className="py-3 px-4 text-center">
-                    <span className="font-bold text-blue-900">AIR #1</span>
-                  </td>
-                  <td className="py-3 px-4 text-right font-bold text-slate-800">
-                    {b.id === 'branch-handwara' ? '46.2%' : '38.4%'}
+              {filteredBranches.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="py-8 text-center text-slate-400">
+                    <Building className="h-8 w-8 mx-auto mb-2 opacity-40 text-slate-400" />
+                    No campuses found matching the active branch filter.
                   </td>
                 </tr>
-              ))}
+              ) : (
+                filteredBranches.map(b => (
+                  <tr key={b.id} className="hover:bg-slate-50 transition">
+                    <td className="py-3 px-4">
+                      <p className="font-bold text-slate-900">{b.name} Campus</p>
+                      <p className="text-[10px] text-slate-400">{b.city} • Head: {b.headFaculty}</p>
+                    </td>
+                    <td className="py-3 px-4 text-center font-bold text-slate-900">{b.studentCount}</td>
+                    <td className="py-3 px-4 text-center">
+                      <div className="flex items-center justify-center gap-1.5">
+                        <div className="w-16 h-2 bg-slate-100 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-blue-900 rounded-full"
+                            style={{ width: `${Math.min(100, (b.studentCount / (b.capacity || 1)) * 100)}%` }}
+                          />
+                        </div>
+                        <span className="font-bold text-slate-700">
+                          {((b.studentCount / (b.capacity || 1)) * 100).toFixed(0)}%
+                        </span>
+                      </div>
+                    </td>
+                    <td className="py-3 px-4 text-center font-bold text-emerald-700">{b.attendanceRate}%</td>
+                    <td className="py-3 px-4 text-right font-black text-slate-900">
+                      ₹{(b.monthlyRevenue / 100000).toFixed(2)}L
+                    </td>
+                    <td className="py-3 px-4 text-center">
+                      <span className="font-bold text-blue-900">AIR #1</span>
+                    </td>
+                    <td className="py-3 px-4 text-right font-bold text-slate-800">
+                      {b.id === 'branch-handwara' ? '46.2%' : '38.4%'}
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
@@ -121,11 +165,16 @@ export const ReportsAnalyticsView: React.FC = () => {
               <div className="flex justify-between items-center mb-1">
                 <span className="font-semibold text-slate-700">2. Academic Counseling Completed</span>
                 <span className="font-bold text-slate-900">
-                  {enquiries.filter(l => l.status === 'counselling' || l.status === 'admission').length} Leads (76%)
+                  {filteredEnquiries.filter(l => l.status === 'counselling' || l.status === 'admission').length} Leads
                 </span>
               </div>
               <div className="h-2 w-full bg-slate-200 rounded-full overflow-hidden">
-                <div className="h-full bg-blue-800 w-[76%]" />
+                <div
+                  className="h-full bg-blue-800"
+                  style={{
+                    width: `${totalEnquiries > 0 ? (filteredEnquiries.filter(l => l.status === 'counselling' || l.status === 'admission').length / totalEnquiries) * 100 : 0}%`,
+                  }}
+                />
               </div>
             </div>
 
@@ -133,11 +182,16 @@ export const ReportsAnalyticsView: React.FC = () => {
               <div className="flex justify-between items-center mb-1">
                 <span className="font-semibold text-slate-700">3. Demo Class &amp; Evaluation</span>
                 <span className="font-bold text-slate-900">
-                  {enquiries.filter(l => l.status === 'admission' || l.priority === 'high').length} Leads (54%)
+                  {filteredEnquiries.filter(l => l.status === 'admission' || l.priority === 'high').length} Leads
                 </span>
               </div>
               <div className="h-2 w-full bg-slate-200 rounded-full overflow-hidden">
-                <div className="h-full bg-indigo-700 w-[54%]" />
+                <div
+                  className="h-full bg-indigo-700"
+                  style={{
+                    width: `${totalEnquiries > 0 ? (filteredEnquiries.filter(l => l.status === 'admission' || l.priority === 'high').length / totalEnquiries) * 100 : 0}%`,
+                  }}
+                />
               </div>
             </div>
 

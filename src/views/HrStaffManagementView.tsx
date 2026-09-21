@@ -13,10 +13,13 @@ import {
   Building,
 } from 'lucide-react';
 import { useErpData } from '../context/ErpDataContext';
+import { useAuth } from '../context/AuthContext';
 import { Employee, LeaveRequest } from '../types';
+import { StudentAvatar } from '../components/common/StudentAvatar';
 
 export const HrStaffManagementView: React.FC = () => {
   const { employees, leaveRequests, updateLeaveStatus, branches } = useErpData();
+  const { activeBranchFilter } = useAuth();
 
   const [activeTab, setActiveTab] = useState<'directory' | 'leaves'>('directory');
   const [searchTerm, setSearchTerm] = useState('');
@@ -31,11 +34,21 @@ export const HrStaffManagementView: React.FC = () => {
       e.email.toLowerCase().includes(searchTerm.toLowerCase());
 
     const deptMatch = departmentFilter === 'all' || e.department === departmentFilter;
+    const branchMatch = activeBranchFilter === 'all' || e.branchId === activeBranchFilter;
 
-    return searchMatch && deptMatch;
+    return searchMatch && deptMatch && branchMatch;
   });
 
-  const pendingLeaves = leaveRequests.filter(l => l.status === 'pending');
+  const branchEmployees = activeBranchFilter === 'all'
+    ? employees
+    : employees.filter(e => e.branchId === activeBranchFilter);
+
+  const pendingLeaves = leaveRequests.filter(l => {
+    const isPending = l.status === 'pending';
+    if (activeBranchFilter === 'all') return isPending;
+    const emp = employees.find(e => e.id === l.employeeId);
+    return isPending && emp?.branchId === activeBranchFilter;
+  });
 
   return (
     <div className="space-y-6">
@@ -63,7 +76,7 @@ export const HrStaffManagementView: React.FC = () => {
               activeTab === 'directory' ? 'bg-blue-900 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            Staff Directory ({employees.length})
+            Staff Directory ({branchEmployees.length})
           </button>
           <button
             onClick={() => setActiveTab('leaves')}
@@ -80,7 +93,7 @@ export const HrStaffManagementView: React.FC = () => {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs">
           <span className="text-[11px] font-semibold text-slate-500">Total Workforce</span>
-          <div className="mt-1 text-2xl font-black text-slate-900">{employees.length}</div>
+          <div className="mt-1 text-2xl font-black text-slate-900">{branchEmployees.length}</div>
           <span className="text-[10px] text-slate-400">Faculty &amp; Operations</span>
         </div>
 
@@ -99,7 +112,7 @@ export const HrStaffManagementView: React.FC = () => {
         <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs">
           <span className="text-[11px] font-semibold text-slate-500">Monthly Payroll Pool</span>
           <div className="mt-1 text-2xl font-black text-slate-900">
-            ₹{(employees.reduce((acc, e) => acc + e.monthlySalary, 0) / 100000).toFixed(1)}L
+            ₹{(branchEmployees.reduce((acc, e) => acc + e.monthlySalary, 0) / 100000).toFixed(1)}L
           </div>
           <span className="text-[10px] text-slate-400">Direct NEFT disbursement</span>
         </div>
@@ -136,12 +149,19 @@ export const HrStaffManagementView: React.FC = () => {
           </div>
 
           {/* Staff Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredEmployees.map(emp => (
+          {filteredEmployees.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-slate-200 bg-white p-12 text-center text-slate-400">
+              <Users className="h-10 w-10 mx-auto mb-2 opacity-40" />
+              <p className="font-semibold text-slate-700">No staff members found</p>
+              <p className="text-xs text-slate-400 mt-1">Try adjusting your search query, department filter, or global branch selection.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filteredEmployees.map(emp => (
               <div key={emp.id} className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs space-y-3">
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
-                    <img src={emp.photo} alt={emp.name} className="h-12 w-12 rounded-full object-cover border border-slate-200" />
+                    <StudentAvatar photo={emp.photo} name={emp.name} size="lg" className="h-12 w-12 rounded-full object-cover border border-slate-200" />
                     <div>
                       <h4 className="font-bold text-slate-900 text-sm">{emp.name}</h4>
                       <p className="font-mono text-[10px] text-blue-900 font-bold">{emp.empCode}</p>
@@ -179,8 +199,9 @@ export const HrStaffManagementView: React.FC = () => {
               </div>
             ))}
           </div>
-        </div>
-      )}
+        )}
+      </div>
+    )}
 
       {/* LEAVES TAB */}
       {activeTab === 'leaves' && (
@@ -191,48 +212,64 @@ export const HrStaffManagementView: React.FC = () => {
           </div>
 
           <div className="divide-y divide-slate-100 text-xs">
-            {leaveRequests.map(req => (
-              <div key={req.id} className="p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 hover:bg-slate-50">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold text-slate-900 text-sm">{req.employeeName}</span>
-                    <span className="rounded bg-blue-50 text-blue-900 px-2 py-0.5 text-[10px] font-bold">
-                      {req.leaveType}
-                    </span>
-                    <span className="text-slate-500">• {req.daysCount} Day(s)</span>
-                  </div>
-                  <p className="text-slate-600 font-medium">"{req.reason}"</p>
-                  <p className="text-[11px] text-slate-400">Period: {req.startDate} to {req.endDate} • {req.branchName}</p>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  {req.status === 'pending' ? (
-                    <>
-                      <button
-                        onClick={() => updateLeaveStatus(req.id, 'approved')}
-                        className="flex items-center gap-1 rounded-lg bg-emerald-600 px-3 py-1.5 font-bold text-white hover:bg-emerald-700 text-xs shadow-2xs"
-                      >
-                        <CheckCircle2 className="h-3.5 w-3.5" />
-                        <span>Approve</span>
-                      </button>
-                      <button
-                        onClick={() => updateLeaveStatus(req.id, 'rejected')}
-                        className="flex items-center gap-1 rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 font-bold text-red-700 hover:bg-red-100 text-xs"
-                      >
-                        <XCircle className="h-3.5 w-3.5" />
-                        <span>Reject</span>
-                      </button>
-                    </>
-                  ) : (
-                    <span className={`rounded px-2.5 py-1 text-xs font-bold ${
-                      req.status === 'approved' ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'
-                    }`}>
-                      {req.status.toUpperCase()}
-                    </span>
-                  )}
-                </div>
+            {leaveRequests.filter(l => {
+              if (activeBranchFilter === 'all') return true;
+              const emp = employees.find(e => e.id === l.employeeId);
+              return emp?.branchId === activeBranchFilter;
+            }).length === 0 ? (
+              <div className="p-8 text-center text-slate-400">
+                <Clock className="h-8 w-8 mx-auto mb-2 opacity-40" />
+                <p className="font-semibold text-slate-700">No leave applications found</p>
+                <p className="text-xs text-slate-400 mt-1">There are no leave applications matching the selected branch.</p>
               </div>
-            ))}
+            ) : (
+              leaveRequests.filter(l => {
+                if (activeBranchFilter === 'all') return true;
+                const emp = employees.find(e => e.id === l.employeeId);
+                return emp?.branchId === activeBranchFilter;
+              }).map(req => (
+                <div key={req.id} className="p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 hover:bg-slate-50">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-slate-900 text-sm">{req.employeeName}</span>
+                      <span className="rounded bg-blue-50 text-blue-900 px-2 py-0.5 text-[10px] font-bold">
+                        {req.leaveType}
+                      </span>
+                      <span className="text-slate-500">• {req.daysCount} Day(s)</span>
+                    </div>
+                    <p className="text-slate-600 font-medium">"{req.reason}"</p>
+                    <p className="text-[11px] text-slate-400">Period: {req.startDate} to {req.endDate} • {req.branchName}</p>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    {req.status === 'pending' ? (
+                      <>
+                        <button
+                          onClick={() => updateLeaveStatus(req.id, 'approved')}
+                          className="flex items-center gap-1 rounded-lg bg-emerald-600 px-3 py-1.5 font-bold text-white hover:bg-emerald-700 text-xs shadow-2xs"
+                        >
+                          <CheckCircle2 className="h-3.5 w-3.5" />
+                          <span>Approve</span>
+                        </button>
+                        <button
+                          onClick={() => updateLeaveStatus(req.id, 'rejected')}
+                          className="flex items-center gap-1 rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 font-bold text-red-700 hover:bg-red-100 text-xs"
+                        >
+                          <XCircle className="h-3.5 w-3.5" />
+                          <span>Reject</span>
+                        </button>
+                      </>
+                    ) : (
+                      <span className={`rounded px-2.5 py-1 text-xs font-bold ${
+                        req.status === 'approved' ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'
+                      }`}>
+                        {req.status.toUpperCase()}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
       )}

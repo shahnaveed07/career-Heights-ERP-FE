@@ -508,10 +508,15 @@ export const AdmissionsCrmView: React.FC = () => {
                     className="w-full rounded-lg border border-slate-200 bg-white p-2 text-xs text-slate-800 focus:outline-hidden focus:border-blue-900"
                   >
                     <option value="Direct Walk-in">Direct Walk-in</option>
+                    <option value="Walk-in">Walk-in</option>
                     <option value="CHTQ Scholarship">CHTQ Scholarship</option>
                     <option value="Referral">Referral</option>
                     <option value="Website">Website</option>
                     <option value="Seminar">Seminar</option>
+                    <option value="Social Media">Social Media</option>
+                    {convertSource && !['Direct Walk-in', 'Walk-in', 'CHTQ Scholarship', 'Referral', 'Website', 'Seminar', 'Social Media'].includes(convertSource) && (
+                      <option value={convertSource}>{convertSource}</option>
+                    )}
                   </select>
                 </div>
 

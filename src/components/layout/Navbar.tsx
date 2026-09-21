@@ -16,6 +16,7 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { useErpData } from '../../context/ErpDataContext';
 import { Role } from '../../types';
+import { StudentAvatar } from '../common/StudentAvatar';
 
 interface NavbarProps {
   onToggleSidebar: () => void;
@@ -271,9 +272,10 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar, onSelectModule 
             }}
             className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white p-1.5 sm:px-3 sm:py-1.5 hover:bg-slate-50 transition"
           >
-            <img
-              src={currentUser?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=160&q=80'}
-              alt={currentUser?.name}
+            <StudentAvatar
+              photo={currentUser?.avatar}
+              name={currentUser?.name || 'Staff'}
+              size="sm"
               className="h-7 w-7 rounded-full object-cover ring-1 ring-slate-200"
             />
             <div className="hidden text-left sm:block">

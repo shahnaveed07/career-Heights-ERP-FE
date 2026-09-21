@@ -85,3 +85,21 @@ export function generateNextReceiptNo(existingReceipts: FeeReceipt[]): {
     id: `rcpt-${nextNum}`,
   };
 }
+
+/**
+ * Generates a deterministic transaction reference without Math.random().
+ */
+export function generateNextTransactionRef(existingReceipts: FeeReceipt[]): string {
+  let maxNum = 0;
+  for (const r of existingReceipts) {
+    const match = r.transactionRef?.match(/TXN-(\d+)/i);
+    if (match) {
+      const num = parseInt(match[1], 10);
+      if (!isNaN(num) && num > maxNum) {
+        maxNum = num;
+      }
+    }
+  }
+  const nextNum = maxNum >= 100000 ? maxNum + 1 : 100001;
+  return `TXN-${nextNum}`;
+}
