@@ -1,17 +1,26 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Search, Plus } from 'lucide-react';
 import { useErpData } from '../context/ErpDataContext';
+import { useAuth } from '../context/AuthContext';
 export const InventoryAssetsView = () => {
-  const { assets, addAsset, branches } = useErpData();
+  const { assets, scopedInventory, addAsset, branches } = useErpData();
+  const { activeBranchFilter } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedBranch, setSelectedBranch] = useState('all');
+  const [selectedBranch, setSelectedBranch] = useState(
+    activeBranchFilter === 'all' ? 'all' : activeBranchFilter
+  );
   const [selectedCategory, setSelectedCategory] = useState('all');
+
+  useEffect(() => {
+    setSelectedBranch(activeBranchFilter);
+  }, [activeBranchFilter]);
+
   const [showAddModal, setShowAddModal] = useState(false);
   const [newAsset, setNewAsset] = useState({
     name: 'BenQ 4K Interactive Smart Panel',
     code: 'AST-AV-2026-09',
     category: 'Projectors & AV',
-    branchId: branches[0]?.id || 'branch-handwara',
+    branchId: activeBranchFilter !== 'all' ? activeBranchFilter : (branches[0]?.id || 'branch-handwara'),
     branchName: 'Handwara Campus',
     quantity: 4,
     unit: 'Units',
@@ -21,23 +30,23 @@ export const InventoryAssetsView = () => {
     purchaseDate: '2026-08-15',
     estimatedValue: 24e4,
   });
-  const filteredAssets = assets.filter((item) => {
+  const filteredAssets = scopedInventory.filter((item) => {
     const searchMatch =
       !searchTerm ||
       item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.locationRoom.toLowerCase().includes(searchTerm.toLowerCase());
+      item.locationRoom?.toLowerCase().includes(searchTerm.toLowerCase());
     const branchMatch =
       selectedBranch === 'all' || item.branchId === selectedBranch;
     const catMatch =
       selectedCategory === 'all' || item.category === selectedCategory;
     return searchMatch && branchMatch && catMatch;
   });
-  const totalValue = assets.reduce(
+  const totalValue = scopedInventory.reduce(
     (acc, i) => acc + (i.estimatedValue || 0),
     0
   );
-  const maintenanceCount = assets.filter(
+  const maintenanceCount = scopedInventory.filter(
     (i) => i.status === 'maintenance' || i.condition === 'needs_repair'
   ).length;
   const handleAddSubmit = (e) => {
@@ -84,7 +93,7 @@ export const InventoryAssetsView = () => {
             Total Tracked Assets
           </span>
           <div className="mt-1 text-2xl font-black text-slate-900">
-            {assets.length} Lines
+            {scopedInventory.length} Lines
           </div>
           <span className="text-[10px] text-slate-400">
             Fixed assets &amp; consumables

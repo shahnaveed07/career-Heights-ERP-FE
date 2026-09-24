@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   GraduationCap,
   ArrowRight,
@@ -51,8 +51,23 @@ export const PublicHomeView = ({ onOpenLogin, onSelectPublicPage, initialPage = 
   });
   const [enquirySuccess, setEnquirySuccess] = useState(false);
 
+  useEffect(() => {
+    if (initialPage) {
+      setActivePage(initialPage);
+      if (initialPage === 'home') {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      } else {
+        const el = document.getElementById(initialPage);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }
+    }
+  }, [initialPage]);
+
   const handleNavigate = (pageId) => {
     setActivePage(pageId);
+    onSelectPublicPage?.(pageId);
     if (pageId === 'home') {
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } else {

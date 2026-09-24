@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   CreditCard,
   Search,
@@ -13,8 +14,19 @@ import { useErpData } from '../context/ErpDataContext';
 import { useAuth } from '../context/AuthContext';
 import { StudentAvatar } from '../components/common/StudentAvatar';
 import { generateNextTransactionRef } from '../utils/idGenerators';
-export const FeesAccountsView = () => {
-  const { students, feeReceipts, recordFeePayment, branches } = useErpData();
+export const FeesAccountsView = ({ autoOpenPayment }) => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const isPaymentRoute = autoOpenPayment || location.pathname === '/fees/payments/new';
+
+  const {
+    students,
+    scopedStudents,
+    feeReceipts,
+    scopedFees,
+    recordFeePayment,
+    branches,
+  } = useErpData();
   const { activeBranchFilter, setActiveBranchFilter, uiMode, can } = useAuth();
   const canCollectFee = uiMode !== 'view' && (can('fees', 'collect_payment') || can('fees', 'edit'));
   const canSendReminders = uiMode !== 'view' && can('communication', 'add');
@@ -27,10 +39,27 @@ export const FeesAccountsView = () => {
   const [actionMessage, setActionMessage] = useState(null);
   useEffect(() => {
     setSelectedBranch(activeBranchFilter);
-  }, [activeBranchFilter]);
-  const [showPayModal, setShowPayModal] = useState(false);
+    const candidate = scopedStudents.find((s) => s.feesPending > 0) || scopedStudents[0];
+    if (candidate) {
+      setTargetStudentId(candidate.id);
+    }
+  }, [activeBranchFilter, scopedStudents]);
+  const [showPayModal, setShowPayModal] = useState(isPaymentRoute);
+
+  useEffect(() => {
+    if (isPaymentRoute) {
+      setShowPayModal(true);
+    }
+  }, [isPaymentRoute]);
+
+  const handleClosePayModal = () => {
+    setShowPayModal(false);
+    if (location.pathname === '/fees/payments/new') {
+      navigate('/fees');
+    }
+  };
   const [targetStudentId, setTargetStudentId] = useState(
-    students.find((s) => s.feesPending > 0)?.id || students[0]?.id || ''
+    scopedStudents.find((s) => s.feesPending > 0)?.id || scopedStudents[0]?.id || ''
   );
   const [paymentAmount, setPaymentAmount] = useState(25e3);
   const [paymentMethod, setPaymentMethod] = useState('UPI');
@@ -39,7 +68,7 @@ export const FeesAccountsView = () => {
   );
   const [modalError, setModalError] = useState(null);
   const [receiptToPrint, setReceiptToPrint] = useState(null);
-  const filteredStudents = students.filter((s) => {
+  const filteredStudents = scopedStudents.filter((s) => {
     const searchMatch =
       !searchTerm ||
       s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -58,10 +87,7 @@ export const FeesAccountsView = () => {
       (statusFilter === 'cleared' && s.feesPending === 0);
     return searchMatch && branchMatch && statusMatch;
   });
-  const branchScopedStudents =
-    selectedBranch === 'all'
-      ? students
-      : students.filter((s) => s.branchId === selectedBranch);
+  const branchScopedStudents = scopedStudents;
   const totalBilled = branchScopedStudents.reduce(
     (acc, s) => acc + s.feesTotal,
     0
@@ -135,7 +161,7 @@ export const FeesAccountsView = () => {
         transactionRef: generateNextTransactionRef(feeReceipts),
         notes: paymentNotes,
       });
-      setShowPayModal(false);
+      handleClosePayModal();
       setModalError(null);
       if (createdReceipt) {
         setReceiptToPrint(createdReceipt);
@@ -452,13 +478,7 @@ export const FeesAccountsView = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {feeReceipts
-                .filter((rcpt) => {
-                  if (selectedBranch === 'all') return true;
-                  const st = students.find((s) => s.id === rcpt.studentId);
-                  return st ? st.branchId === selectedBranch : true;
-                })
-                .map((rcpt) => (
+              {scopedFees.map((rcpt) => (
                   <tr key={rcpt.id} className="hover:bg-slate-50 transition">
                     <td className="py-2.5 px-4 font-mono font-bold text-blue-900">
                       {rcpt.receiptNo}
@@ -501,7 +521,7 @@ export const FeesAccountsView = () => {
                 <span>Collect Tuition Fee Payment</span>
               </h3>
               <button
-                onClick={() => setShowPayModal(false)}
+                onClick={handleClosePayModal}
                 className="text-slate-400 hover:text-slate-700"
               >
                 <X className="h-5 w-5" />
@@ -662,7 +682,7 @@ export const FeesAccountsView = () => {
                   <div className="flex justify-end gap-2 pt-3 border-t border-slate-200">
                     <button
                       type="button"
-                      onClick={() => setShowPayModal(false)}
+                      onClick={handleClosePayModal}
                       className="rounded-lg border border-slate-300 px-4 py-2 font-semibold text-slate-700 hover:bg-slate-50"
                     >
                       Cancel

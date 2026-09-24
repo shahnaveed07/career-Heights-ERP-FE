@@ -1,4 +1,4 @@
-import { createContext, useContext, useState } from 'react';
+import { createContext, useContext, useState, useEffect, useMemo } from 'react';
 import {
   INITIAL_STUDENTS,
   INITIAL_BRANCHES,
@@ -38,9 +38,29 @@ import {
   calculateStudentAttendanceSummary,
   upsertAttendanceRecord,
 } from '../utils/attendanceCalculator';
+import {
+  getVisibleStudents,
+  getVisibleTeachers,
+  getVisibleStaff,
+  getVisibleFees,
+  getVisibleAttendance,
+  getVisibleBatches,
+  getVisibleWings,
+  getVisibleExams,
+  getVisibleEnquiries,
+  getVisibleAssets,
+  getVisibleDocuments,
+  getVisibleCommunications,
+  getVisibleSalaries,
+  getVisibleChtqCandidates,
+  getVisibleTeacherAttendance,
+  getVisibleReports,
+  isAllBranches,
+} from '../utils/branchScoping';
 const ErpDataContext = createContext(void 0);
 export const ErpDataProvider = ({ children }) => {
-  const { currentUser } = useAuth();
+  const { currentUser, setCustomRolesRegistry, activeBranchId, activeBranchFilter } = useAuth();
+  const currentActiveBranch = activeBranchId || activeBranchFilter || 'all';
   const [branches, setBranches] = useState(INITIAL_BRANCHES);
   const [wings] = useState(INITIAL_WINGS);
   const [classes] = useState(INITIAL_CLASSES);
@@ -71,6 +91,12 @@ export const ErpDataProvider = ({ children }) => {
   const [subjectCombos, setSubjectCombos] = useState(INITIAL_SUBJECT_COMBOS);
   const [teacherAssignments, setTeacherAssignments] = useState(INITIAL_TEACHER_ASSIGNMENTS);
   const [customRoles, setCustomRoles] = useState(INITIAL_CUSTOM_ROLES);
+
+  useEffect(() => {
+    if (setCustomRolesRegistry) {
+      setCustomRolesRegistry(customRoles);
+    }
+  }, [customRoles, setCustomRolesRegistry]);
   const [salaries, setSalaries] = useState(() => {
     return INITIAL_STAFF.map((emp, idx) => ({
       id: `sal-${emp.id}-2026-02`,
@@ -498,6 +524,7 @@ export const ErpDataProvider = ({ children }) => {
       studentId: student.id,
       studentName: student.name,
       studentCode: student.studentId,
+      branchId: student.branchId,
       branchName: student.branchName,
       batchName: student.batchName,
       amount: paymentData.amount,
@@ -913,6 +940,108 @@ export const ErpDataProvider = ({ children }) => {
     addAuditLog('Deleted Custom Role', 'Security & Roles', `Deleted role #${id}`);
   };
 
+  const addEmployee = (empData) => {
+    const id = `emp-${Date.now().toString(36)}`;
+    const branch = branches.find((b) => b.id === empData.branchId) || branches[0];
+    const newEmp = {
+      id,
+      empCode: empData.empCode || `CH-STF-${employees.length + 1}`,
+      name: empData.name,
+      photo:
+        empData.photo ||
+        'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=160&q=80',
+      email: empData.email,
+      phone: empData.phone,
+      role: empData.role || 'teacher',
+      roleTitle: empData.roleTitle || '',
+      designation: empData.designation || 'Staff Member',
+      department: empData.department || 'Academic',
+      branchId: branch.id,
+      branchName: branch.name,
+      joiningDate: empData.joiningDate || getTodayDateString(),
+      monthlySalary: Number(empData.monthlySalary || 45000),
+      incentives: Number(empData.incentives || 0),
+      status: empData.status || 'active',
+      qualifications: empData.qualifications || 'Post Graduate Specialist',
+      attendanceRate: 100,
+      customRoleId: empData.customRoleId || null,
+    };
+    setEmployees((prev) => [...prev, newEmp]);
+    addAuditLog(
+      'Created Staff User & Role Assignment',
+      'HR & User Management',
+      `Created staff user ${newEmp.name} (${newEmp.empCode}) with role "${newEmp.role}".`
+    );
+    return newEmp;
+  };
+
+  const updateEmployee = (id, updatedData) => {
+    const currentEmp = employees.find((e) => e.id === id);
+    if (!currentEmp) return { success: false, message: 'Employee not found' };
+
+    // SAFEGUARD: Never allow the last active SuperAdmin to be disabled/deactivated
+    if (currentEmp.role === 'super_admin' || currentEmp.role === 'ceo') {
+      const activeSuperAdmins = employees.filter(
+        (e) =>
+          (e.role === 'super_admin' || e.role === 'ceo') &&
+          e.status !== 'inactive'
+      );
+      if (activeSuperAdmins.length <= 1) {
+        if (updatedData.status === 'inactive') {
+          return {
+            success: false,
+            message:
+              'Institutional Safeguard: The last active SuperAdmin / Owner account cannot be disabled or deactivated.',
+          };
+        }
+        if (updatedData.role && updatedData.role !== 'super_admin') {
+          return {
+            success: false,
+            message:
+              'Institutional Safeguard: The last active SuperAdmin / Owner role cannot be changed without designating another SuperAdmin first.',
+          };
+        }
+      }
+    }
+
+    setEmployees((prev) =>
+      prev.map((e) => (e.id === id ? { ...e, ...updatedData } : e))
+    );
+    addAuditLog(
+      'Updated Staff User Profile & Role',
+      'HR & User Management',
+      `Updated user ${currentEmp.name} (#${id}) details.`
+    );
+    return { success: true };
+  };
+
+  const transferEmployee = (id, targetBranchId) => {
+    const branch = branches.find((b) => b.id === targetBranchId);
+    if (!branch) return { success: false, message: 'Invalid target branch' };
+
+    setEmployees((prev) =>
+      prev.map((e) =>
+        e.id === id
+          ? {
+              ...e,
+              branchId: branch.id,
+              branchName: branch.name,
+            }
+          : e
+      )
+    );
+    addAuditLog(
+      'Transferred Staff Campus Location',
+      'HR & User Management',
+      `Transferred staff member #${id} to ${branch.name} Campus.`
+    );
+    return { success: true };
+  };
+
+  const disableEmployee = (id) => {
+    return updateEmployee(id, { status: 'inactive' });
+  };
+
   const payStaffSalary = (salaryId, paymentDetails = {}) => {
     const today = getTodayDateString();
     const txRef = paymentDetails.transactionRef || `SAL-TX-${Date.now().toString().slice(-6)}`;
@@ -982,9 +1111,179 @@ export const ErpDataProvider = ({ children }) => {
     });
   };
 
+  // Branch Scoped Collections (Strict single active branch context)
+  const scopedStudents = useMemo(
+    () => getVisibleStudents(students, currentActiveBranch),
+    [students, currentActiveBranch]
+  );
+  const scopedTeachers = useMemo(
+    () => getVisibleTeachers(employees, currentActiveBranch, teacherAssignments),
+    [employees, currentActiveBranch, teacherAssignments]
+  );
+  const scopedStaff = useMemo(
+    () => getVisibleStaff(employees, currentActiveBranch),
+    [employees, currentActiveBranch]
+  );
+  const scopedBatches = useMemo(
+    () => getVisibleBatches(batches, currentActiveBranch),
+    [batches, currentActiveBranch]
+  );
+  const scopedFees = useMemo(
+    () => getVisibleFees(feeReceipts, currentActiveBranch, students, branches),
+    [feeReceipts, currentActiveBranch, students, branches]
+  );
+  const scopedAttendance = useMemo(
+    () => getVisibleAttendance(attendanceRecords, currentActiveBranch, students),
+    [attendanceRecords, currentActiveBranch, students]
+  );
+  const scopedExams = useMemo(
+    () => getVisibleExams(tests, currentActiveBranch),
+    [tests, currentActiveBranch]
+  );
+  const scopedEnquiries = useMemo(
+    () => getVisibleEnquiries(enquiries, currentActiveBranch),
+    [enquiries, currentActiveBranch]
+  );
+  const scopedAssets = useMemo(
+    () => getVisibleAssets(assets, currentActiveBranch),
+    [assets, currentActiveBranch]
+  );
+  const scopedDocuments = useMemo(
+    () => getVisibleDocuments(documents, currentActiveBranch, students, employees),
+    [documents, currentActiveBranch, students, employees]
+  );
+  const scopedCommunications = useMemo(
+    () => getVisibleCommunications(notifications, currentActiveBranch),
+    [notifications, currentActiveBranch]
+  );
+  const scopedSalaries = useMemo(
+    () => getVisibleSalaries(salaries, currentActiveBranch),
+    [salaries, currentActiveBranch]
+  );
+  const scopedWings = useMemo(
+    () => getVisibleWings(wings, currentActiveBranch),
+    [wings, currentActiveBranch]
+  );
+  const scopedChtqCandidates = useMemo(
+    () => getVisibleChtqCandidates(chtqCandidates, currentActiveBranch),
+    [chtqCandidates, currentActiveBranch]
+  );
+  const scopedTeacherAttendance = useMemo(
+    () => getVisibleTeacherAttendance(teacherAttendanceRecords, currentActiveBranch, employees),
+    [teacherAttendanceRecords, currentActiveBranch, employees]
+  );
+  const scopedReports = useMemo(
+    () =>
+      getVisibleReports(
+        {
+          students,
+          feeReceipts,
+          attendanceRecords,
+          batches,
+          branches,
+          employees,
+          enquiries,
+          tests,
+        },
+        currentActiveBranch
+      ),
+    [
+      students,
+      feeReceipts,
+      attendanceRecords,
+      batches,
+      branches,
+      employees,
+      enquiries,
+      tests,
+      currentActiveBranch,
+    ]
+  );
+
+  // Centralized Selector Functions
+  const getVisibleStudentsFn = (customList, bId = currentActiveBranch) =>
+    getVisibleStudents(customList || students, bId);
+  const getVisibleTeachersFn = (customList, bId = currentActiveBranch) =>
+    getVisibleTeachers(customList || employees, bId, teacherAssignments);
+  const getVisibleStaffFn = (customList, bId = currentActiveBranch) =>
+    getVisibleStaff(customList || employees, bId);
+  const getVisibleFeesFn = (customList, bId = currentActiveBranch) =>
+    getVisibleFees(customList || feeReceipts, bId, students, branches);
+  const getVisibleAttendanceFn = (customList, bId = currentActiveBranch) =>
+    getVisibleAttendance(customList || attendanceRecords, bId, students);
+  const getVisibleBatchesFn = (customList, bId = currentActiveBranch) =>
+    getVisibleBatches(customList || batches, bId);
+  const getVisibleExamsFn = (customList, bId = currentActiveBranch) =>
+    getVisibleExams(customList || tests, bId);
+  const getVisibleReportsFn = (customData, bId = currentActiveBranch) =>
+    getVisibleReports(
+      customData || {
+        students,
+        feeReceipts,
+        attendanceRecords,
+        batches,
+        branches,
+        employees,
+        enquiries,
+        tests,
+      },
+      bId
+    );
+  const getVisibleEnquiriesFn = (customList, bId = currentActiveBranch) =>
+    getVisibleEnquiries(customList || enquiries, bId);
+  const getVisibleAssetsFn = (customList, bId = currentActiveBranch) =>
+    getVisibleAssets(customList || assets, bId);
+
   return (
     <ErpDataContext.Provider
       value={{
+        activeBranchId: currentActiveBranch,
+        isAllBranches: isAllBranches(currentActiveBranch),
+        // Scoped Collections
+        scopedStudents,
+        visibleStudents: scopedStudents,
+        scopedTeachers,
+        visibleTeachers: scopedTeachers,
+        scopedStaff,
+        visibleStaff: scopedStaff,
+        scopedBatches,
+        visibleBatches: scopedBatches,
+        scopedWings,
+        visibleWings: scopedWings,
+        scopedFees,
+        visibleFees: scopedFees,
+        scopedAttendance,
+        visibleAttendance: scopedAttendance,
+        scopedExams,
+        visibleExams: scopedExams,
+        scopedEnquiries,
+        visibleEnquiries: scopedEnquiries,
+        scopedAssets,
+        visibleAssets: scopedAssets,
+        scopedDocuments,
+        visibleDocuments: scopedDocuments,
+        scopedCommunications,
+        visibleCommunications: scopedCommunications,
+        scopedSalaries,
+        visibleSalaries: scopedSalaries,
+        scopedChtqCandidates,
+        visibleChtqCandidates: scopedChtqCandidates,
+        scopedTeacherAttendance,
+        visibleTeacherAttendance: scopedTeacherAttendance,
+        scopedReports,
+        visibleReports: scopedReports,
+        // Reusable Selectors
+        getVisibleStudents: getVisibleStudentsFn,
+        getVisibleTeachers: getVisibleTeachersFn,
+        getVisibleStaff: getVisibleStaffFn,
+        getVisibleFees: getVisibleFeesFn,
+        getVisibleAttendance: getVisibleAttendanceFn,
+        getVisibleBatches: getVisibleBatchesFn,
+        getVisibleExams: getVisibleExamsFn,
+        getVisibleReports: getVisibleReportsFn,
+        getVisibleEnquiries: getVisibleEnquiriesFn,
+        getVisibleAssets: getVisibleAssetsFn,
+        // Base Collections & Mutators
         branches,
         wings,
         classes,
@@ -1027,6 +1326,10 @@ export const ErpDataProvider = ({ children }) => {
         addCustomRole,
         updateCustomRole,
         deleteCustomRole,
+        addEmployee,
+        updateEmployee,
+        transferEmployee,
+        disableEmployee,
         payStaffSalary,
         markTeacherSelfAttendance,
         getTeacherAssignedStudents,

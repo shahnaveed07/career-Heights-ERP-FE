@@ -1,11 +1,26 @@
 import { useState } from 'react';
-import { Building, Plus, MapPin, X, Check, CheckCircle2 } from 'lucide-react';
+import { Building, Plus, MapPin, X, Check, CheckCircle2, ShieldAlert, AlertTriangle } from 'lucide-react';
 import { useErpData } from '../context/ErpDataContext';
 import { useAuth } from '../context/AuthContext';
+import { normalizeRole, SYSTEM_ROLES } from '../utils/permissionManager';
+import { canUserAccessBranch, getUserAccessibleBranches } from '../utils/branchAccessModel';
 
 export const BranchManagementView = () => {
   const { branches, addBranch } = useErpData();
-  const { activeBranchFilter, setActiveBranchFilter, uiMode, can } = useAuth();
+  const {
+    activeBranchFilter,
+    setActiveBranchFilter,
+    setActiveBranch,
+    currentUser,
+    uiMode,
+    can,
+    branchSwitchError,
+    clearBranchSwitchError,
+  } = useAuth();
+  const canonicalRole = normalizeRole(currentUser?.role);
+  const isSuperOrHq =
+    canonicalRole === SYSTEM_ROLES.SUPER_ADMIN ||
+    canonicalRole === SYSTEM_ROLES.HQ_ADMIN;
   const canCreateBranch = uiMode !== 'view' && can('branches', 'create');
   const [showAddModal, setShowAddModal] = useState(false);
   const [newBranchForm, setNewBranchForm] = useState({
@@ -57,12 +72,14 @@ export const BranchManagementView = () => {
         </div>
 
         <div>
-          <button
-            onClick={() => setActiveBranchFilter('all')}
-            className={`mr-2 rounded-lg border px-3 py-2 text-xs font-bold transition shadow-xs ${activeBranchFilter === 'all' ? 'bg-blue-900 text-white border-blue-900' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'}`}
-          >
-            All Campuses (Consolidated)
-          </button>
+          {isSuperOrHq && (
+            <button
+              onClick={() => setActiveBranch('all')}
+              className={`mr-2 rounded-lg border px-3 py-2 text-xs font-bold transition shadow-xs ${activeBranchFilter === 'all' ? 'bg-blue-900 text-white border-blue-900' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'}`}
+            >
+              All Campuses (Consolidated)
+            </button>
+          )}
           {canCreateBranch ? (
             <button
               onClick={() => setShowAddModal(true)}
@@ -79,6 +96,22 @@ export const BranchManagementView = () => {
         </div>
       </div>
 
+      {/* Access Restriction Warning Banner */}
+      {branchSwitchError && (
+        <div className="rounded-xl border border-rose-300 bg-rose-50 p-4 flex items-center justify-between text-xs text-rose-900 shadow-xs">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4 text-rose-600 shrink-0" />
+            <span className="font-semibold">{branchSwitchError}</span>
+          </div>
+          <button
+            onClick={clearBranchSwitchError}
+            className="text-xs font-bold text-rose-700 hover:text-rose-900 underline"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+
       {/* Active Branch Status Banner */}
       <div className="rounded-xl border border-blue-200 bg-blue-50/50 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
         <div>
@@ -89,9 +122,9 @@ export const BranchManagementView = () => {
             Single Active Branch Directive: When a campus is active, students, faculty, batches, and operations reflect that campus context.
           </p>
         </div>
-        {activeBranchFilter !== 'all' && (
+        {isSuperOrHq && activeBranchFilter !== 'all' && (
           <button
-            onClick={() => setActiveBranchFilter('all')}
+            onClick={() => setActiveBranch('all')}
             className="self-start sm:self-auto shrink-0 rounded-lg bg-white border border-blue-200 px-3 py-1.5 font-bold text-blue-900 hover:bg-blue-100 shadow-2xs"
           >
             Switch to All Branches
@@ -103,6 +136,7 @@ export const BranchManagementView = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {branches.map((branch) => {
           const isActiveBranch = activeBranchFilter === branch.id;
+          const isAccessible = canUserAccessBranch(currentUser, branch.id);
           const utilRate = (
             (branch.studentCount / branch.capacity) *
             100
@@ -203,12 +237,20 @@ export const BranchManagementView = () => {
                     <CheckCircle2 className="h-3.5 w-3.5" />
                     Active Campus
                   </span>
-                ) : (
+                ) : isAccessible ? (
                   <button
-                    onClick={() => setActiveBranchFilter(branch.id)}
+                    onClick={() => setActiveBranch(branch.id)}
                     className="rounded-lg bg-slate-100 px-2.5 py-1 text-blue-900 hover:bg-blue-900 hover:text-white transition shadow-2xs"
                   >
                     Focus Campus &rarr;
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => setActiveBranch(branch.id)}
+                    className="rounded-lg bg-rose-50 border border-rose-200 px-2.5 py-1 text-rose-700 hover:bg-rose-100 transition shadow-2xs"
+                    title="Campus not assigned to your account. Switch will be safely rejected."
+                  >
+                    Unassigned (Restricted)
                   </button>
                 )}
               </div>

@@ -35,14 +35,24 @@ export const AcademicManagementView = () => {
     deleteTeacherAssignment,
     branches,
     wings,
+    scopedWings,
     classes,
     employees,
+    scopedBatches,
+    scopedTeachers,
   } = useErpData();
   const { currentUser, uiMode, can, activeBranchFilter } = useAuth();
   const [activeTab, setActiveTab] = useState('syllabus');
+  const displayBatches = scopedBatches.length > 0 ? scopedBatches : batches;
   const [selectedBatchId, setSelectedBatchId] = useState(
-    batches[0]?.id || 'batch-1'
+    displayBatches[0]?.id || 'batch-1'
   );
+
+  useEffect(() => {
+    if (displayBatches.length > 0 && !displayBatches.some((b) => b.id === selectedBatchId)) {
+      setSelectedBatchId(displayBatches[0].id);
+    }
+  }, [displayBatches, selectedBatchId]);
   const [newDoubtQuestion, setNewDoubtQuestion] = useState('');
   const [newDoubtSubject, setNewDoubtSubject] = useState('Physics');
   const [activeAnswerDoubtId, setActiveAnswerDoubtId] = useState(null);
@@ -782,7 +792,7 @@ export const AcademicManagementView = () => {
                     onChange={(e) => setSelectedBatchId(e.target.value)}
                     className="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs"
                   >
-                    {batches.map((b) => (
+                    {displayBatches.map((b) => (
                       <option key={b.id} value={b.id}>
                         {b.name}
                       </option>

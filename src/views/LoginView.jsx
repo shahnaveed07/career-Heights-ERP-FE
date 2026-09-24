@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import {
   ArrowLeft,
   ArrowRight,
@@ -13,57 +14,56 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import { SYSTEM_ROLES, ROLE_LABELS } from "../utils/permissionManager";
+import { getDefaultRouteForRole, ROUTES } from "../routes/routeConfig";
 
 const DEMO_ACCOUNTS = [
   {
-    role: "ceo",
-    label: "CEO / Super Admin",
+    role: SYSTEM_ROLES.SUPER_ADMIN,
+    label: "SuperAdmin / Owner",
     email: "ceo@careerheights.demo",
   },
   {
-    role: "hq_admin",
+    role: SYSTEM_ROLES.HQ_ADMIN,
     label: "HQ Admin",
     email: "admin@careerheights.demo",
   },
   {
-    role: "branch_admin",
-    label: "Branch Admin",
+    role: SYSTEM_ROLES.BRANCH_ADMIN,
+    label: "Admin",
     email: "branch@careerheights.demo",
   },
   {
-    role: "faculty",
-    label: "Faculty",
+    role: SYSTEM_ROLES.ACCOUNTANT_COORDINATOR,
+    label: "Accountant / Coordinator",
+    email: "accountant@careerheights.demo",
+  },
+  {
+    role: SYSTEM_ROLES.TEACHER,
+    label: "Teacher",
     email: "faculty@careerheights.demo",
   },
   {
-    role: "student",
+    role: SYSTEM_ROLES.STUDENT,
     label: "Student",
     email: "student@careerheights.demo",
   },
   {
-    role: "parent",
-    label: "Parent",
+    role: SYSTEM_ROLES.PARENT,
+    label: "Parent / Guardian",
     email: "parent@careerheights.demo",
   },
   {
-    role: "counsellor",
-    label: "Counsellor",
-    email: "counsellor@careerheights.demo",
-  },
-  {
-    role: "accountant",
-    label: "Accountant",
-    email: "accountant@careerheights.demo",
-  },
-  {
-    role: "hr_manager",
-    label: "HR Manager",
+    role: SYSTEM_ROLES.HR,
+    label: "HR",
     email: "hr@careerheights.demo",
   },
 ];
 
 export const LoginView = ({ onBackToHome }) => {
   const { login } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -112,9 +112,15 @@ export const LoginView = ({ onBackToHome }) => {
         setError(
           result.message || "Unable to sign in. Please check your credentials.",
         );
+        setLoading(false);
+      } else {
+        const fromPath = location.state?.from?.pathname;
+        const targetRoute =
+          fromPath && fromPath !== ROUTES.LOGIN
+            ? fromPath
+            : getDefaultRouteForRole(result.user?.role || selectedRole);
+        navigate(targetRoute, { replace: true });
       }
-
-      setLoading(false);
     }, 350);
   };
 
@@ -206,16 +212,17 @@ export const LoginView = ({ onBackToHome }) => {
 
                 {/* Heading */}
                 <div>
-                  {onBackToHome && (
-                    <button
-                      type="button"
-                      onClick={onBackToHome}
-                      className="mb-4 inline-flex items-center gap-1.5 text-xs font-semibold text-blue-900 hover:text-blue-700 transition"
-                    >
-                      <ArrowLeft className="h-3.5 w-3.5" />
-                      <span>&larr; Return to Institute Website</span>
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (onBackToHome) onBackToHome();
+                      else navigate(ROUTES.HOME);
+                    }}
+                    className="mb-4 inline-flex items-center gap-1.5 text-xs font-semibold text-blue-900 hover:text-blue-700 transition"
+                  >
+                    <ArrowLeft className="h-3.5 w-3.5" />
+                    <span>&larr; Return to Institute Website</span>
+                  </button>
 
                   <div className="mb-4 flex items-center gap-2">
                     <div className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5">

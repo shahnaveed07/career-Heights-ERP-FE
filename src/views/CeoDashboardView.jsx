@@ -12,10 +12,26 @@ import { useErpData } from '../context/ErpDataContext';
 import { useAuth } from '../context/AuthContext';
 import { isToday, isPastOrToday, isCurrentMonth } from '../utils/dateUtils';
 import { StudentAvatar } from '../components/common/StudentAvatar';
+import { normalizeRole, SYSTEM_ROLES } from '../utils/permissionManager';
+import { useNavigate } from 'react-router-dom';
+import { moduleToPath } from '../routes/routeConfig';
+
 export const CeoDashboardView = ({
   onNavigateToStudent,
   onNavigateToModule,
 }) => {
+  const navigate = useNavigate();
+
+  const handleNavModule = (mod) => {
+    if (onNavigateToModule) onNavigateToModule(mod);
+    navigate(moduleToPath(mod));
+  };
+
+  const handleNavStudent = (studentId) => {
+    if (onNavigateToStudent) onNavigateToStudent(studentId);
+    navigate(`/students/${studentId}`);
+  };
+
   const {
     branches,
     wings,
@@ -27,40 +43,28 @@ export const CeoDashboardView = ({
     employees,
     documents,
     feeReceipts,
+    scopedStudents,
+    scopedEnquiries,
+    scopedFees,
+    scopedStaff,
   } = useErpData();
   const { activeBranchFilter, setActiveBranchFilter, currentUser } = useAuth();
+  const canonicalRole = normalizeRole(currentUser?.role);
   const [drillLevel, setDrillLevel] = useState('hq');
   const [selectedBranchId, setSelectedBranchId] = useState(null);
   const [selectedWingId, setSelectedWingId] = useState(null);
   const [selectedClassId, setSelectedClassId] = useState(null);
   const [selectedBatchId, setSelectedBatchId] = useState(null);
-  const filteredStudents =
-    activeBranchFilter === 'all'
-      ? students
-      : students.filter((s) => s.branchId === activeBranchFilter);
-  const filteredEnquiries =
-    activeBranchFilter === 'all'
-      ? enquiries
-      : enquiries.filter((e) => e.branchId === activeBranchFilter);
-  const filteredReceipts =
-    activeBranchFilter === 'all'
-      ? feeReceipts
-      : feeReceipts.filter((r) => {
-          const student = students.find((s) => s.id === r.studentId);
-          if (student) return student.branchId === activeBranchFilter;
-          const targetBranch = branches.find(
-            (b) => b.id === activeBranchFilter
-          );
-          return targetBranch ? r.branchName === targetBranch.name : true;
-        });
+  
+  // Use centralized scoped collections strictly respecting active branch
+  const filteredStudents = scopedStudents;
+  const filteredEnquiries = scopedEnquiries;
+  const filteredReceipts = scopedFees;
   const filteredBranches =
     activeBranchFilter === 'all'
       ? branches
       : branches.filter((b) => b.id === activeBranchFilter);
-  const filteredEmployees =
-    activeBranchFilter === 'all'
-      ? employees
-      : employees.filter((e) => e.branchId === activeBranchFilter);
+  const filteredEmployees = scopedStaff;
   const totalStudents = filteredStudents.length;
   const newAdmissions = filteredStudents.filter((s) =>
     isCurrentMonth(s.admissionDate)
@@ -94,7 +98,10 @@ export const CeoDashboardView = ({
       : '0.0';
   const totalTestsConducted = tests.length;
   const activeFacultyCount = filteredEmployees.filter(
-    (e) => e.role === 'faculty' && e.status === 'active'
+    (e) =>
+      (normalizeRole(e.role) === SYSTEM_ROLES.TEACHER ||
+        e.department === 'Academic') &&
+      e.status === 'active'
   ).length;
   const pendingDocsCount = documents.filter(
     (d) => d.status === 'pending'
@@ -163,17 +170,28 @@ export const CeoDashboardView = ({
           <div>
             <div className="flex items-center gap-2">
               <span className="rounded-md bg-blue-900 px-2 py-0.5 text-xs font-bold text-white tracking-wider uppercase">
-                {currentUser?.role === 'branch_admin' ? 'BRANCH EXECUTIVE INTELLIGENCE' : currentUser?.role === 'hq_admin' ? 'HQ OPERATIONS INTELLIGENCE' : 'EXECUTIVE INTELLIGENCE'}
+                {canonicalRole === SYSTEM_ROLES.BRANCH_ADMIN
+                  ? 'BRANCH EXECUTIVE INTELLIGENCE'
+                  : canonicalRole === SYSTEM_ROLES.HQ_ADMIN
+                    ? 'HQ OPERATIONS INTELLIGENCE'
+                    : 'EXECUTIVE INTELLIGENCE'}
               </span>
               <span className="text-xs font-semibold text-slate-500">
-                {activeBranchFilter === 'all' ? 'All 5 Campuses Consolidated' : `${branches.find(b => b.id === activeBranchFilter)?.name || 'Branch'} Campus Live View`}
+                {activeBranchFilter === 'all'
+                  ? 'All 5 Campuses Consolidated'
+                  : `${branches.find((b) => b.id === activeBranchFilter)?.name || 'Branch'} Campus Live View`}
               </span>
             </div>
             <h1 className="mt-2 text-2xl sm:text-3xl font-black tracking-tight text-slate-900">
-              CAREER HEIGHTS — {currentUser?.role === 'branch_admin' ? `${currentUser?.branchName || 'BRANCH'} COMMAND CONSOLE` : currentUser?.role === 'hq_admin' ? 'HQ OPERATIONS CONSOLE' : 'CEO DASHBOARD'}
+              CAREER HEIGHTS —{' '}
+              {canonicalRole === SYSTEM_ROLES.BRANCH_ADMIN
+                ? `${currentUser?.branchName || 'BRANCH'} COMMAND CONSOLE`
+                : canonicalRole === SYSTEM_ROLES.HQ_ADMIN
+                  ? 'HQ OPERATIONS CONSOLE'
+                  : 'EXECUTIVE DASHBOARD'}
             </h1>
             <p className="mt-1 text-xs sm:text-sm text-slate-500">
-              {currentUser?.role === 'branch_admin' 
+              {canonicalRole === SYSTEM_ROLES.BRANCH_ADMIN
                 ? `Branch Director: ${currentUser?.name} • Managing ${currentUser?.branchName || 'Assigned'} Campus operations and batch schedules.`
                 : 'Multi-branch centralized command for Handwara, Qaziabad, Dangiwacha, Kalambad & Unso campuses.'}
             </p>
@@ -181,14 +199,14 @@ export const CeoDashboardView = ({
 
           <div className="flex flex-wrap items-center gap-2.5">
             <button
-              onClick={() => onNavigateToModule?.('admissions_crm')}
+              onClick={() => handleNavModule('admissions_crm')}
               className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 transition shadow-2xs"
             >
               <Users className="h-3.5 w-3.5 text-blue-900" />
               <span>Lead Pipeline</span>
             </button>
             <button
-              onClick={() => onNavigateToModule?.('fees')}
+              onClick={() => handleNavModule('fees')}
               className="flex items-center gap-1.5 rounded-lg bg-blue-900 px-3.5 py-2 text-xs font-bold text-white hover:bg-blue-800 transition shadow-xs"
             >
               <DollarSign className="h-3.5 w-3.5" />
@@ -439,7 +457,7 @@ export const CeoDashboardView = ({
                     Auto SMS triggered to parent
                   </span>
                   <button
-                    onClick={() => onNavigateToModule?.('attendance')}
+                    onClick={() => handleNavModule('attendance')}
                     className="text-[11px] font-bold text-red-700 hover:underline"
                   >
                     View Roster &rarr;
@@ -470,7 +488,7 @@ export const CeoDashboardView = ({
                     Notice issued
                   </span>
                   <button
-                    onClick={() => onNavigateToModule?.('fees')}
+                    onClick={() => handleNavModule('fees')}
                     className="text-[11px] font-bold text-red-700 hover:underline"
                   >
                     Remind Parents &rarr;
@@ -538,7 +556,7 @@ export const CeoDashboardView = ({
                 </p>
                 <div className="mt-2 text-right">
                   <button
-                    onClick={() => onNavigateToModule?.('documents')}
+                    onClick={() => handleNavModule('documents')}
                     className="text-[11px] font-bold text-amber-800 hover:underline"
                   >
                     Open Document Vault &rarr;
@@ -560,7 +578,7 @@ export const CeoDashboardView = ({
                 </p>
                 <div className="mt-2 text-right">
                   <button
-                    onClick={() => onNavigateToModule?.('admissions_crm')}
+                    onClick={() => handleNavModule('admissions_crm')}
                     className="text-[11px] font-bold text-amber-800 hover:underline"
                   >
                     View Follow-ups &rarr;
@@ -1036,7 +1054,7 @@ export const CeoDashboardView = ({
                         </td>
                         <td className="py-2.5 px-3 text-right">
                           <button
-                            onClick={() => onNavigateToStudent?.(s.id)}
+                            onClick={() => handleNavStudent(s.id)}
                             className="rounded bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-800 hover:bg-blue-900 hover:text-white transition"
                           >
                             Full Profile

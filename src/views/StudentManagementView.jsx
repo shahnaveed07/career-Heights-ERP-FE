@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import {
   Search,
   Plus,
@@ -12,8 +13,13 @@ import { useErpData } from '../context/ErpDataContext';
 import { useAuth } from '../context/AuthContext';
 import { StudentAvatar } from '../components/common/StudentAvatar';
 export const StudentManagementView = ({ initialStudentId }) => {
+  const { studentId: routeStudentId } = useParams();
+  const navigate = useNavigate();
+
   const {
     students,
+    scopedStudents,
+    scopedBatches,
     branches,
     batches,
     addStudent,
@@ -38,12 +44,55 @@ export const StudentManagementView = ({ initialStudentId }) => {
   }, [activeBranchFilter]);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 12;
+
+  const effectiveInitialId = routeStudentId || initialStudentId;
   const [activeStudent, setActiveStudent] = useState(() => {
-    if (initialStudentId) {
-      return students.find((s) => s.id === initialStudentId) || null;
+    if (effectiveInitialId) {
+      const match = students.find((s) => s.id === effectiveInitialId);
+      if (match && (activeBranchFilter === 'all' || match.branchId === activeBranchFilter)) {
+        return match;
+      }
     }
     return null;
   });
+
+  // Automatically deselect active student when switching active branch to prevent cross-branch leakage
+  useEffect(() => {
+    if (
+      activeBranchFilter !== 'all' &&
+      activeStudent &&
+      activeStudent.branchId !== activeBranchFilter
+    ) {
+      setActiveStudent(null);
+      navigate('/students');
+    }
+  }, [activeBranchFilter, activeStudent, navigate]);
+
+  // Synchronize route param changes with active student
+  useEffect(() => {
+    if (routeStudentId) {
+      const match = students.find((s) => s.id === routeStudentId);
+      if (match) {
+        setActiveStudent(match);
+      }
+    } else if (!initialStudentId) {
+      setActiveStudent(null);
+    }
+  }, [routeStudentId, students, initialStudentId]);
+
+  const handleOpenStudent = (student) => {
+    setActiveStudent(student);
+    if (student) {
+      navigate(`/students/${student.id}`);
+    } else {
+      navigate('/students');
+    }
+  };
+
+  const handleCloseStudent = () => {
+    setActiveStudent(null);
+    navigate('/students');
+  };
   const [activeDetailTab, setActiveDetailTab] = useState('profile');
   const [showAddModal, setShowAddModal] = useState(false);
   const [newStudentForm, setNewStudentForm] = useState({
@@ -66,7 +115,7 @@ export const StudentManagementView = ({ initialStudentId }) => {
     feesPaid: 35e3,
     remarks: '',
   });
-  const filtered = students.filter((student) => {
+  const filtered = scopedStudents.filter((student) => {
     const searchMatch =
       !searchTerm ||
       student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -121,7 +170,7 @@ export const StudentManagementView = ({ initialStudentId }) => {
     });
     setFormError(null);
     setShowAddModal(false);
-    setActiveStudent(created);
+    handleOpenStudent(created);
   };
   const studentResults = activeStudent
     ? testResults.filter((r) => r.studentId === activeStudent.id)
@@ -393,7 +442,7 @@ export const StudentManagementView = ({ initialStudentId }) => {
                     <td className="py-3 px-4 text-right">
                       <button
                         onClick={() => {
-                          setActiveStudent(student);
+                          handleOpenStudent(student);
                           setActiveDetailTab('profile');
                         }}
                         className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-blue-900 hover:bg-blue-50 transition shadow-2xs"
@@ -461,7 +510,7 @@ export const StudentManagementView = ({ initialStudentId }) => {
                 </div>
               </div>
               <button
-                onClick={() => setActiveStudent(null)}
+                onClick={handleCloseStudent}
                 className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-200 hover:text-slate-700"
               >
                 <X className="h-5 w-5" />
@@ -760,7 +809,7 @@ export const StudentManagementView = ({ initialStudentId }) => {
             {/* Modal Footer */}
             <div className="border-t border-slate-200 bg-slate-50 px-6 py-3 flex justify-end">
               <button
-                onClick={() => setActiveStudent(null)}
+                onClick={handleCloseStudent}
                 className="rounded-lg bg-slate-800 px-4 py-2 text-xs font-bold text-white hover:bg-slate-700"
               >
                 Close Drawer

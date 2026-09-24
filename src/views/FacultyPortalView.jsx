@@ -17,11 +17,17 @@ import { useAuth } from '../context/AuthContext';
 import { useErpData } from '../context/ErpDataContext';
 import { StudentAvatar } from '../components/common/StudentAvatar';
 import { getTodayDateString } from '../utils/dateUtils';
+import { normalizeRole, SYSTEM_ROLES } from '../utils/permissionManager';
 
 export const FacultyPortalView = () => {
   const { currentUser, can, uiMode } = useAuth();
+  const canonicalRole = normalizeRole(currentUser?.role);
+  const isSuperOrHq =
+    canonicalRole === SYSTEM_ROLES.SUPER_ADMIN ||
+    canonicalRole === SYSTEM_ROLES.HQ_ADMIN;
   const {
     batches,
+    scopedBatches,
     timetable,
     syllabus,
     doubts,
@@ -29,6 +35,7 @@ export const FacultyPortalView = () => {
     employees,
     teacherAssignments,
     students,
+    scopedStudents,
     markStudentAttendance,
     markBatchAttendance,
     attendanceRecords,
@@ -42,10 +49,18 @@ export const FacultyPortalView = () => {
   const [activeAnswerId, setActiveAnswerId] = useState(null);
   const [answerText, setAnswerText] = useState('');
 
-  // Selected batch for attendance & study materials
-  const [selectedBatchId, setSelectedBatchId] = useState(batches[0]?.id || 'batch-jee-a');
+  // Selected batch for attendance & study materials scoped to active branch
+  const availableBatches = scopedBatches.length > 0 ? scopedBatches : batches;
+  const [selectedBatchId, setSelectedBatchId] = useState(availableBatches[0]?.id || 'batch-jee-a');
   const [attendanceDate, setAttendanceDate] = useState(getTodayDateString());
   const [attendanceSuccessMsg, setAttendanceSuccessMsg] = useState(null);
+
+  // Sync selectedBatchId when active branch changes
+  useEffect(() => {
+    if (availableBatches.length > 0 && !availableBatches.some((b) => b.id === selectedBatchId)) {
+      setSelectedBatchId(availableBatches[0].id);
+    }
+  }, [availableBatches, selectedBatchId]);
 
   // DPP / Homework modal
   const [showAddHwModal, setShowAddHwModal] = useState(false);
@@ -64,8 +79,7 @@ export const FacultyPortalView = () => {
     (ta) =>
       ta.teacherId === currentUser?.id ||
       ta.teacherName?.toLowerCase() === currentUser?.name?.toLowerCase() ||
-      currentUser?.role === 'ceo' ||
-      currentUser?.role === 'hq_admin'
+      isSuperOrHq
   );
 
   // Self attendance record for today
@@ -97,7 +111,7 @@ export const FacultyPortalView = () => {
 
   // Batch students for attendance
   const activeBatch = batches.find((b) => b.id === selectedBatchId) || batches[0];
-  const activeBatchStudents = students.filter((s) => s.batchId === selectedBatchId);
+  const activeBatchStudents = scopedStudents.filter((s) => s.batchId === selectedBatchId);
 
   const getStudentStatus = (studentId) => {
     const rec = attendanceRecords.find(

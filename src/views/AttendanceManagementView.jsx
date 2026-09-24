@@ -13,13 +13,13 @@ export const AttendanceManagementView = () => {
     markStudentAttendance,
     markBatchAttendance,
     employees,
+    scopedBatches,
+    scopedStudents,
+    scopedStaff,
   } = useErpData();
   const { activeBranchFilter } = useAuth();
   const [activeTab, setActiveTab] = useState('students');
-  const availableBatches =
-    activeBranchFilter === 'all'
-      ? batches
-      : batches.filter((b) => b.branchId === activeBranchFilter);
+  const availableBatches = scopedBatches;
   const [selectedBatchId, setSelectedBatchId] = useState(
     availableBatches[0]?.id || batches[0]?.id || 'batch-jee-a'
   );
@@ -34,7 +34,7 @@ export const AttendanceManagementView = () => {
     }
   }, [activeBranchFilter, availableBatches, selectedBatchId]);
   const activeBatch = batches.find((b) => b.id === selectedBatchId);
-  const batchStudents = students.filter((s) => s.batchId === selectedBatchId);
+  const batchStudents = scopedStudents.filter((s) => s.batchId === selectedBatchId);
   const getStudentStatus = (studentId) => {
     const rec = attendanceRecords.find(
       (r) => r.studentId === studentId && r.date === selectedDate
@@ -70,14 +70,8 @@ export const AttendanceManagementView = () => {
     );
     setTimeout(() => setAlertSentMessage(null), 5e3);
   };
-  const filteredStudents =
-    activeBranchFilter === 'all'
-      ? students
-      : students.filter((s) => s.branchId === activeBranchFilter);
-  const filteredEmployees =
-    activeBranchFilter === 'all'
-      ? employees
-      : employees.filter((e) => e.branchId === activeBranchFilter);
+  const filteredStudents = scopedStudents;
+  const filteredEmployees = scopedStaff;
   const criticalAttendanceStudents = filteredStudents.filter(
     (s) => s.attendanceRate < 75
   );

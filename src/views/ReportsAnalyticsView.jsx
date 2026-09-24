@@ -3,30 +3,30 @@ import { Building, CheckCircle2, FileSpreadsheet } from 'lucide-react';
 import { useErpData } from '../context/ErpDataContext';
 import { useAuth } from '../context/AuthContext';
 export const ReportsAnalyticsView = () => {
-  const { branches, students, enquiries, chtqSchools } = useErpData();
+  const {
+    branches,
+    students,
+    enquiries,
+    chtqSchools,
+    scopedReports,
+    scopedStudents,
+    scopedEnquiries,
+  } = useErpData();
   const { activeBranchFilter } = useAuth();
   const [downloadSuccess, setDownloadSuccess] = useState(null);
   const filteredBranches =
     activeBranchFilter === 'all'
       ? branches
       : branches.filter((b) => b.id === activeBranchFilter);
-  const filteredStudents =
-    activeBranchFilter === 'all'
-      ? students
-      : students.filter((s) => s.branchId === activeBranchFilter);
-  const filteredEnquiries =
-    activeBranchFilter === 'all'
-      ? enquiries
-      : enquiries.filter((e) => e.branchId === activeBranchFilter);
-  const totalRevenue = filteredBranches.reduce(
+  const filteredStudents = scopedStudents;
+  const filteredEnquiries = scopedEnquiries;
+  const totalRevenue = scopedReports.totalFeesCollected || filteredBranches.reduce(
     (acc, b) => acc + b.monthlyRevenue,
     0
   );
-  const totalStudents = filteredStudents.length;
-  const totalEnquiries = filteredEnquiries.length;
-  const enrolledEnquiries = filteredEnquiries.filter(
-    (l) => l.status === 'admission'
-  ).length;
+  const totalStudents = scopedReports.totalStudents;
+  const totalEnquiries = scopedReports.totalEnquiries;
+  const enrolledEnquiries = scopedReports.convertedEnquiries;
   const overallConversion =
     totalEnquiries > 0
       ? ((enrolledEnquiries / totalEnquiries) * 100).toFixed(1)

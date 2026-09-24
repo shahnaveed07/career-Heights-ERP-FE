@@ -1,23 +1,30 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Plus, UploadCloud, CheckCircle2, Scan, RefreshCw } from 'lucide-react';
 import { useErpData } from '../context/ErpDataContext';
 import { useAuth } from '../context/AuthContext';
 import { getFutureDateString } from '../utils/dateUtils';
 export const ExaminationOmrView = () => {
-  const { tests, testResults, addTest, runOmrSimulation, batches } =
+  const { tests, scopedExams, testResults, addTest, runOmrSimulation, batches, scopedBatches } =
     useErpData();
   const { activeBranchFilter } = useAuth();
-  const [selectedTestId, setSelectedTestId] = useState(tests[0]?.id || '');
+  const [selectedTestId, setSelectedTestId] = useState(scopedExams[0]?.id || tests[0]?.id || '');
   const [activeTab, setActiveTab] = useState('tests');
   const [selectedCourseFilter, setSelectedCourseFilter] = useState('all');
   const [selectedClassFilter, setSelectedClassFilter] = useState('all');
+
+  useEffect(() => {
+    if (scopedExams.length > 0 && !scopedExams.some((t) => t.id === selectedTestId)) {
+      setSelectedTestId(scopedExams[0].id);
+    }
+  }, [scopedExams, selectedTestId]);
+
   const uniqueCourses = Array.from(
-    new Set(tests.map((t) => t.course).filter(Boolean))
+    new Set(scopedExams.map((t) => t.course).filter(Boolean))
   );
   const uniqueClasses = Array.from(
-    new Set(tests.map((t) => t.className).filter(Boolean))
+    new Set(scopedExams.map((t) => t.className).filter(Boolean))
   );
-  const filteredTests = tests.filter((t) => {
+  const filteredTests = scopedExams.filter((t) => {
     if (selectedCourseFilter !== 'all' && t.course !== selectedCourseFilter)
       return false;
     if (selectedClassFilter !== 'all' && t.className !== selectedClassFilter)

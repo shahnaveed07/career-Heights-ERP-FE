@@ -18,6 +18,7 @@ import {
 export const AdmissionsCrmView = () => {
   const {
     enquiries,
+    scopedEnquiries,
     addEnquiry,
     updateEnquiryStatus,
     convertEnquiryToAdmission,
@@ -34,6 +35,7 @@ export const AdmissionsCrmView = () => {
   const [formError, setFormError] = useState(null);
   useEffect(() => {
     setSelectedBranch(activeBranchFilter);
+    setConvertModalLead(null);
   }, [activeBranchFilter]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [newLeadForm, setNewLeadForm] = useState({
@@ -122,7 +124,7 @@ export const AdmissionsCrmView = () => {
       bg: 'bg-slate-100 border-slate-200',
     },
   ];
-  const filteredEnquiries = enquiries.filter((e) => {
+  const filteredEnquiries = scopedEnquiries.filter((e) => {
     const candidateName = e.name || e.studentName || '';
     const counsellorName = e.assignedCounsellor || e.counsellorName || '';
     const searchMatch =

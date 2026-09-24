@@ -9,16 +9,23 @@ import {
 import { useErpData } from '../context/ErpDataContext';
 import { useAuth } from '../context/AuthContext';
 export const CommunicationCentreView = () => {
-  const { notifications, sendBroadcastMessage, batches, students } =
-    useErpData();
-  const { can, uiMode } = useAuth();
+  const {
+    notifications,
+    scopedCommunications,
+    sendBroadcastMessage,
+    batches,
+    scopedBatches,
+    students,
+    scopedStudents,
+  } = useErpData();
+  const { can, uiMode, activeBranchFilter } = useAuth();
   const canSendBroadcast = uiMode !== 'view' && can('communication', 'add');
   const [activeTab, setActiveTab] = useState('broadcast');
   const [channel, setChannel] = useState('sms');
   const [targetAudience, setTargetAudience] = useState('all_parents');
   const [templateName, setTemplateName] = useState('attendance_alert');
   const [messageContent, setMessageContent] = useState(
-    'Dear Parent, Your ward was marked PRESENT at Career Heights Handwara Campus for the 08:30 AM Physics Lecture. \u2014 Principal CH'
+    'Dear Parent, Your ward was marked PRESENT at Career Heights for the 08:30 AM Physics Lecture. \u2014 Principal CH'
   );
   const [broadcastHistory, setBroadcastHistory] = useState([
     {
@@ -85,7 +92,7 @@ export const CommunicationCentreView = () => {
       message: messageContent,
       template: templateName,
       timestamp: 'Just now',
-      recipientsCount: targetAudience === 'all_parents' ? students.length : 45,
+      recipientsCount: targetAudience === 'all_parents' ? scopedStudents.length : Math.min(45, scopedStudents.length),
       deliveryRate: '100% (Queued)',
     };
     setBroadcastHistory([newRecord, ...broadcastHistory]);
