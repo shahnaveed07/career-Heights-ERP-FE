@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   Calendar,
   Clock,
@@ -18,6 +18,11 @@ import { useErpData } from '../context/ErpDataContext';
 import { StudentAvatar } from '../components/common/StudentAvatar';
 import { getTodayDateString } from '../utils/dateUtils';
 import { normalizeRole, SYSTEM_ROLES } from '../utils/permissionManager';
+import {
+  getStudentsForTeacher,
+  getStudentEnrolledSubjects,
+  CANONICAL_SUBJECTS,
+} from '../utils/academicModel';
 
 export const FacultyPortalView = () => {
   const { currentUser, can, uiMode } = useAuth();
@@ -49,9 +54,22 @@ export const FacultyPortalView = () => {
   const [activeAnswerId, setActiveAnswerId] = useState(null);
   const [answerText, setAnswerText] = useState('');
 
+  const facultyProfile =
+    employees.find((e) => e.email === currentUser?.email) || employees[0];
+
+  // Faculty assigned records from teacherAssignments
+  const myAssignments = (teacherAssignments || []).filter(
+    (ta) =>
+      ta.teacherId === currentUser?.id ||
+      ta.teacherId === facultyProfile?.id ||
+      ta.teacherName?.toLowerCase() === currentUser?.name?.toLowerCase() ||
+      isSuperOrHq
+  );
+
   // Selected batch for attendance & study materials scoped to active branch
   const availableBatches = scopedBatches.length > 0 ? scopedBatches : batches;
   const [selectedBatchId, setSelectedBatchId] = useState(availableBatches[0]?.id || 'batch-jee-a');
+  const [selectedSubjectFilter, setSelectedSubjectFilter] = useState('all');
   const [attendanceDate, setAttendanceDate] = useState(getTodayDateString());
   const [attendanceSuccessMsg, setAttendanceSuccessMsg] = useState(null);
 
@@ -70,17 +88,6 @@ export const FacultyPortalView = () => {
     dueDate: '',
     description: '',
   });
-
-  const facultyProfile =
-    employees.find((e) => e.email === currentUser?.email) || employees[0];
-
-  // Faculty assigned records from teacherAssignments
-  const myAssignments = (teacherAssignments || []).filter(
-    (ta) =>
-      ta.teacherId === currentUser?.id ||
-      ta.teacherName?.toLowerCase() === currentUser?.name?.toLowerCase() ||
-      isSuperOrHq
-  );
 
   // Self attendance record for today
   const todayStr = getTodayDateString();
@@ -109,9 +116,19 @@ export const FacultyPortalView = () => {
     });
   };
 
-  // Batch students for attendance
+  // Batch students for attendance derived from: teacher assignment + actual student enrollment
   const activeBatch = batches.find((b) => b.id === selectedBatchId) || batches[0];
-  const activeBatchStudents = scopedStudents.filter((s) => s.batchId === selectedBatchId);
+  const activeBatchStudents = useMemo(() => {
+    return getStudentsForTeacher({
+      teacherId: currentUser?.id || facultyProfile?.id,
+      teacherName: currentUser?.name || facultyProfile?.name,
+      teacherAssignments,
+      students: scopedStudents,
+      batchId: selectedBatchId,
+      subjectId: selectedSubjectFilter,
+      isSuperOrHq,
+    });
+  }, [currentUser, facultyProfile, teacherAssignments, scopedStudents, selectedBatchId, selectedSubjectFilter, isSuperOrHq]);
 
   const getStudentStatus = (studentId) => {
     const rec = attendanceRecords.find(
@@ -366,7 +383,7 @@ export const FacultyPortalView = () => {
                 Mark Subject &amp; Class Attendance
               </h3>
               <p className="text-xs text-slate-500">
-                Record synchronous student attendance for your assigned batch lectures.
+                Record synchronous student attendance derived from your teaching assignments and enrolled subjects.
               </p>
             </div>
 
@@ -376,9 +393,22 @@ export const FacultyPortalView = () => {
                 onChange={(e) => setSelectedBatchId(e.target.value)}
                 className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-800 shadow-2xs"
               >
-                {batches.map((b) => (
+                {availableBatches.map((b) => (
                   <option key={b.id} value={b.id}>
                     {b.name} ({b.className})
+                  </option>
+                ))}
+              </select>
+
+              <select
+                value={selectedSubjectFilter}
+                onChange={(e) => setSelectedSubjectFilter(e.target.value)}
+                className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-800 shadow-2xs"
+              >
+                <option value="all">All Assigned Subjects</option>
+                {CANONICAL_SUBJECTS.map((sub) => (
+                  <option key={sub.id} value={sub.id}>
+                    {sub.name}
                   </option>
                 ))}
               </select>
@@ -390,6 +420,18 @@ export const FacultyPortalView = () => {
                 className="rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs text-slate-800 shadow-2xs"
               />
             </div>
+          </div>
+
+          <div className="flex items-center justify-between text-xs text-slate-600 bg-blue-50/70 border border-blue-200/80 px-3.5 py-2.5 rounded-xl">
+            <div className="flex items-center gap-2">
+              <Users className="h-4 w-4 text-blue-600 shrink-0" />
+              <span>
+                <strong>Derived Student Scoping:</strong> Showing <strong>{activeBatchStudents.length}</strong> students in <strong>{activeBatch?.name}</strong> enrolled in your assigned subjects.
+              </span>
+            </div>
+            <span className="text-[11px] font-mono text-blue-700 bg-blue-100/60 px-2 py-0.5 rounded">
+              Batch: {activeBatch?.name || 'All'}
+            </span>
           </div>
 
           {attendanceSuccessMsg && (
@@ -430,6 +472,7 @@ export const FacultyPortalView = () => {
                   <tr>
                     <th className="py-3 px-4">Student</th>
                     <th className="py-3 px-4">Roll No</th>
+                    <th className="py-3 px-4">Enrolled Subjects</th>
                     <th className="py-3 px-4">Branch</th>
                     <th className="py-3 px-4">Status on {attendanceDate}</th>
                     <th className="py-3 px-4 text-right">Actions</th>
@@ -438,13 +481,14 @@ export const FacultyPortalView = () => {
                 <tbody className="divide-y divide-slate-100">
                   {activeBatchStudents.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="py-6 text-center text-slate-400">
-                        No students enrolled in this batch.
+                      <td colSpan={6} className="py-6 text-center text-slate-400">
+                        No students enrolled in your assigned subjects for this batch.
                       </td>
                     </tr>
                   ) : (
                     activeBatchStudents.map((st) => {
                       const stStatus = getStudentStatus(st.id);
+                      const studentSubs = getStudentEnrolledSubjects(st, CANONICAL_SUBJECTS);
                       return (
                         <tr key={st.id} className="hover:bg-slate-50/60">
                           <td className="py-3 px-4 font-bold text-slate-900">
@@ -465,6 +509,21 @@ export const FacultyPortalView = () => {
                           </td>
                           <td className="py-3 px-4 font-mono text-slate-600">
                             {st.studentId || st.admissionNo}
+                          </td>
+                          <td className="py-3 px-4">
+                            <div className="flex flex-wrap gap-1 max-w-xs">
+                              {studentSubs.map((sub) => (
+                                <span
+                                  key={sub.id}
+                                  className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-700 border border-slate-200"
+                                >
+                                  {sub.name}
+                                </span>
+                              ))}
+                              {studentSubs.length === 0 && (
+                                <span className="text-[10px] text-slate-400 italic">None</span>
+                              )}
+                            </div>
                           </td>
                           <td className="py-3 px-4 text-slate-600">{st.branchName}</td>
                           <td className="py-3 px-4">

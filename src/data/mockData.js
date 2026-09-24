@@ -243,12 +243,31 @@ export const INITIAL_CLASSES = [
 ];
 export const INITIAL_BATCHES = [
   {
+    id: 'batch-2024-a',
+    classId: 'c-12-med',
+    wingId: 'w-med',
+    branchId: 'b-hdw',
+    branchName: 'Handwara',
+    className: 'Class 12 Medical',
+    wingName: 'Medical',
+    name: '2024-A',
+    code: 'HDW-MED-24-A',
+    academicYear: '2024-2026',
+    facultyMentor: 'Dr. Rahul Sharma',
+    roomNumber: 'Lecture Hall 103',
+    studentCount: 30,
+    capacity: 45,
+    timing: '08:30 AM - 01:30 PM',
+    attendanceToday: 91.5,
+  },
+  {
     id: 'batch-jee-a',
     classId: 'c-11-eng',
     wingId: 'w-eng',
     branchId: 'b-hdw',
     branchName: 'Handwara',
     className: 'Class 11 Engineering',
+    wingName: 'Engineering',
     name: 'JEE-A',
     code: 'HDW-JEE-A-26',
     academicYear: '2025-2026',
@@ -492,7 +511,7 @@ export const INITIAL_TEACHER_ASSIGNMENTS = [
     classId: 'c-11-eng',
     className: 'Class 11 Engineering',
     wingId: 'w-eng',
-    wingName: 'Engineering (JEE) Wing',
+    wingName: 'Engineering',
     batchId: 'batch-jee-a',
     batchName: 'JEE-A',
     subjectId: 'sub-phy',
@@ -504,14 +523,104 @@ export const INITIAL_TEACHER_ASSIGNMENTS = [
     teacherName: 'Dr. Rahul Sharma',
     branchId: 'b-hdw',
     branchName: 'Handwara',
-    classId: 'c-11-med',
-    className: 'Class 11 Medical',
+    classId: 'c-12-med',
+    className: 'Class 12 Medical',
     wingId: 'w-med',
-    wingName: 'Pre-Medical (NEET) Wing',
+    wingName: 'Medical',
     batchId: 'batch-neet-a-hdw',
     batchName: 'NEET-A',
     subjectId: 'sub-phy',
     subjectName: 'Physics',
+  },
+  {
+    id: 'ta-003',
+    teacherId: 'u-faculty',
+    teacherName: 'Dr. Rahul Sharma',
+    branchId: 'b-hdw',
+    branchName: 'Handwara',
+    classId: 'c-12-med',
+    className: 'Class 12 Medical',
+    wingId: 'w-med',
+    wingName: 'Medical',
+    batchId: 'batch-2024-a',
+    batchName: '2024-A',
+    subjectId: 'sub-phy',
+    subjectName: 'Physics',
+  },
+  {
+    id: 'ta-004',
+    teacherId: 'emp-002',
+    teacherName: 'Sana Mir',
+    branchId: 'b-qzb',
+    branchName: 'Qaziabad',
+    classId: 'c-12-med-qzb',
+    className: 'Class 12 Medical',
+    wingId: 'w-med-qzb',
+    wingName: 'Medical',
+    batchId: 'batch-neet-a-qzb',
+    batchName: 'NEET-A',
+    subjectId: 'sub-chem',
+    subjectName: 'Chemistry',
+  },
+  {
+    id: 'ta-005',
+    teacherId: 'emp-002',
+    teacherName: 'Sana Mir',
+    branchId: 'b-qzb',
+    branchName: 'Qaziabad',
+    classId: 'c-11-eng-qzb',
+    className: 'Class 11 Engineering',
+    wingId: 'w-eng-qzb',
+    wingName: 'Engineering',
+    batchId: 'batch-jee-a-qzb',
+    batchName: 'JEE-A',
+    subjectId: 'sub-chem',
+    subjectName: 'Chemistry',
+  },
+  {
+    id: 'ta-006',
+    teacherId: 'emp-006',
+    teacherName: 'Dr. Farooq Wani',
+    branchId: 'b-hdw',
+    branchName: 'Handwara',
+    classId: 'c-12-med',
+    className: 'Class 12 Medical',
+    wingId: 'w-med',
+    wingName: 'Medical',
+    batchId: 'batch-2024-a',
+    batchName: '2024-A',
+    subjectId: 'sub-chem',
+    subjectName: 'Chemistry',
+  },
+  {
+    id: 'ta-007',
+    teacherId: 'u-faculty',
+    teacherName: 'Dr. Rahul Sharma',
+    branchId: 'b-hdw',
+    branchName: 'Handwara',
+    classId: 'c-12-med',
+    className: 'Class 12 Medical',
+    wingId: 'w-med',
+    wingName: 'Medical',
+    batchId: 'batch-2024-a',
+    batchName: '2024-A',
+    subjectId: 'sub-math',
+    subjectName: 'Mathematics',
+  },
+  {
+    id: 'ta-008',
+    teacherId: 'emp-008',
+    teacherName: 'Er. Asif Mir',
+    branchId: 'b-hdw',
+    branchName: 'Handwara',
+    classId: 'c-10-fnd',
+    className: 'Class 10 Foundation',
+    wingId: 'w-fnd',
+    wingName: 'Foundation',
+    batchId: 'batch-fnd-a-hdw',
+    batchName: 'FOUNDATION-A',
+    subjectId: 'sub-math',
+    subjectName: 'Mathematics',
   },
 ];
 
@@ -945,7 +1054,7 @@ function generateStudents() {
     {
       branch: INITIAL_BRANCHES[0],
       count: 111,
-      batches: ['batch-jee-a', 'batch-neet-a-hdw', 'batch-fnd-a-hdw'],
+      batches: ['batch-2024-a', 'batch-jee-a', 'batch-neet-a-hdw', 'batch-fnd-a-hdw'],
     },
     {
       branch: INITIAL_BRANCHES[1],
@@ -960,8 +1069,11 @@ function generateStudents() {
   for (const alloc of branchAllocations) {
     for (let i = 0; i < alloc.count; i++) {
       const isSibling = idCounter === 5;
-      const isSingleSubject = idCounter === 7;
-      const isCustomSubjects = idCounter === 8;
+      const isStudentA = idCounter === 4; // Single Subject: Physics
+      const isStudentB = idCounter === 8; // Single Subject: Chemistry
+      const isStudentC = idCounter === 12; // Two Subjects: Physics + Chemistry
+      const isStudentD = idCounter === 16; // Standard Medical Combo (4 subjects)
+      const isStudentE = idCounter === 20; // Modified Medical Combo (3 subjects - dropped Botany)
 
       const fn = isSibling
         ? 'Ananya'
@@ -995,12 +1107,24 @@ function generateStudents() {
       let enrolledSubjects = ['sub-phy', 'sub-chem', 'sub-math'];
       let subjectComboId = 'combo-eng';
 
-      if (isSingleSubject) {
-        // Explicit Requirement: Student with ONLY ONE subject (No Combo)
+      if (isStudentA) {
+        // Requirement: Single-subject student (Physics only, No Combo)
         enrolledSubjects = ['sub-phy'];
         subjectComboId = null;
-      } else if (isCustomSubjects) {
-        // Explicit Requirement: Custom subject selection (Physics, Chemistry, Zoology - no Botany)
+      } else if (isStudentB) {
+        // Requirement: Single-subject student (Chemistry only, No Combo)
+        enrolledSubjects = ['sub-chem'];
+        subjectComboId = null;
+      } else if (isStudentC) {
+        // Requirement: 2-subject student (Physics + Chemistry, No Combo)
+        enrolledSubjects = ['sub-phy', 'sub-chem'];
+        subjectComboId = null;
+      } else if (isStudentD) {
+        // Requirement: Combo student (Medical: Physics, Chemistry, Botany, Zoology)
+        enrolledSubjects = ['sub-phy', 'sub-chem', 'sub-bot', 'sub-zoo'];
+        subjectComboId = 'combo-med';
+      } else if (isStudentE) {
+        // Requirement: Modified combo student (Medical base with Botany dropped)
         enrolledSubjects = ['sub-phy', 'sub-chem', 'sub-zoo'];
         subjectComboId = 'combo-med';
       } else if (batchObj.wingId.includes('med')) {

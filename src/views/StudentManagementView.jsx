@@ -8,10 +8,25 @@ import {
   GraduationCap,
   X,
   BookOpen,
+  CheckCircle2,
+  FileCheck,
+  Key,
+  Users,
+  Layers,
 } from 'lucide-react';
 import { useErpData } from '../context/ErpDataContext';
 import { useAuth } from '../context/AuthContext';
 import { StudentAvatar } from '../components/common/StudentAvatar';
+import {
+  CANONICAL_SUBJECTS,
+  CANONICAL_SUBJECT_COMBOS,
+  getClassesForBranch,
+  getWingsForClass,
+  getBatchesByHierarchy,
+  getStudentEnrolledSubjects,
+  getStudentEnrolledSubjectIds,
+} from '../utils/academicModel';
+
 export const StudentManagementView = ({ initialStudentId }) => {
   const { studentId: routeStudentId } = useParams();
   const navigate = useNavigate();
@@ -21,6 +36,8 @@ export const StudentManagementView = ({ initialStudentId }) => {
     scopedStudents,
     scopedBatches,
     branches,
+    classes,
+    wings,
     batches,
     addStudent,
     updateStudent,
@@ -101,20 +118,127 @@ export const StudentManagementView = ({ initialStudentId }) => {
     dob: '2008-05-15',
     email: '',
     phone: '',
-    address: '',
+    address: 'Main Town, Handwara, J&K',
+    // Academic Hierarchy: Branch → Class → Wing → Batch
     branchId: branches[0]?.id || 'b-hdw',
-    batchId: batches[0]?.id || 'batch-jee-a',
+    classId: 'c-12-med',
+    wingId: 'w-med',
+    batchId: 'batch-2024-a',
+    // Subject Combo (optional template) & Actual Subject Enrollment
+    subjectComboId: 'combo-med',
+    enrolledSubjects: ['sub-phy', 'sub-chem', 'sub-bot', 'sub-zoo'],
+    // Parents & Guardians
     parentName: '',
     parentPhone: '',
-    parentOccupation: 'Teacher',
-    schoolName: 'Govt Boys Hr Sec School',
-    previousPercentage: 88,
+    parentEmail: '',
+    parentOccupation: 'Government Service',
+    fatherName: '',
+    fatherPhone: '',
+    motherName: '',
+    motherPhone: '',
+    guardianName: '',
+    guardianPhone: '',
+    // Academic History
+    schoolName: 'Govt Model Hr Sec School',
+    previousPercentage: 88.5,
     admissionSource: 'Direct Walk-in',
     scholarshipType: 'None',
-    feesTotal: 95e3,
-    feesPaid: 35e3,
-    remarks: '',
+    // Documents
+    submittedDocuments: ['Aadhaar Card', '10th Marksheet'],
+    documentsCount: 2,
+    pendingDocuments: 1,
+    // Portal Login Credentials
+    portalLoginUsername: '',
+    portalLoginTemporaryPassword: 'CH@2026!',
+    // Financials
+    feesTotal: 95000,
+    feesPaid: 35000,
+    remarks: 'Enrolled via academic intake. Orientation scheduled.',
   });
+
+  const handleComboSelect = (comboId) => {
+    if (!comboId || comboId === 'custom') {
+      setNewStudentForm((prev) => ({
+        ...prev,
+        subjectComboId: null,
+      }));
+      return;
+    }
+    const combo = CANONICAL_SUBJECT_COMBOS.find((c) => c.id === comboId);
+    if (combo) {
+      setNewStudentForm((prev) => ({
+        ...prev,
+        subjectComboId: combo.id,
+        enrolledSubjects: [...combo.subjectIds],
+      }));
+    }
+  };
+
+  const handleToggleSubject = (subId) => {
+    setNewStudentForm((prev) => {
+      const exists = prev.enrolledSubjects.includes(subId);
+      const nextSubjects = exists
+        ? prev.enrolledSubjects.filter((id) => id !== subId)
+        : [...prev.enrolledSubjects, subId];
+      return {
+        ...prev,
+        enrolledSubjects: nextSubjects,
+      };
+    });
+  };
+
+  const handleToggleDocument = (docName) => {
+    setNewStudentForm((prev) => {
+      const exists = prev.submittedDocuments.includes(docName);
+      const nextDocs = exists
+        ? prev.submittedDocuments.filter((d) => d !== docName)
+        : [...prev.submittedDocuments, docName];
+      return {
+        ...prev,
+        submittedDocuments: nextDocs,
+        documentsCount: nextDocs.length,
+        pendingDocuments: Math.max(0, 4 - nextDocs.length),
+      };
+    });
+  };
+
+  const handleAddSubmit = (e) => {
+    e.preventDefault();
+    if (!newStudentForm.name.trim() || !newStudentForm.parentName.trim()) {
+      setFormError('Please fill out student name and parent/guardian information.');
+      return;
+    }
+    if (!newStudentForm.enrolledSubjects || newStudentForm.enrolledSubjects.length === 0) {
+      setFormError('Student must be enrolled in at least one subject.');
+      return;
+    }
+
+    const branch = branches.find((b) => b.id === newStudentForm.branchId);
+    const cls = classes?.find((c) => c.id === newStudentForm.classId);
+    const wing = wings?.find((w) => w.id === newStudentForm.wingId);
+    const batch = batches.find((b) => b.id === newStudentForm.batchId);
+
+    const created = addStudent({
+      ...newStudentForm,
+      branchName: branch?.name || 'Handwara',
+      className: cls?.name || 'Class 12',
+      wingName: wing?.name || 'Medical',
+      batchName: batch?.name || '2024-A',
+      previousPercentage: Number(newStudentForm.previousPercentage),
+      feesTotal: Number(newStudentForm.feesTotal),
+      feesPaid: Number(newStudentForm.feesPaid),
+      scholarshipPercent: newStudentForm.scholarshipType.includes('100')
+        ? 100
+        : newStudentForm.scholarshipType.includes('75')
+          ? 75
+          : newStudentForm.scholarshipType.includes('50')
+            ? 50
+            : 0,
+    });
+    setFormError(null);
+    setShowAddModal(false);
+    handleOpenStudent(created);
+  };
   const filtered = scopedStudents.filter((student) => {
     const searchMatch =
       !searchTerm ||
@@ -149,29 +273,6 @@ export const StudentManagementView = ({ initialStudentId }) => {
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   );
-  const handleAddSubmit = (e) => {
-    e.preventDefault();
-    if (!newStudentForm.name.trim() || !newStudentForm.parentName.trim()) {
-      setFormError('Please fill out student name and parent information.');
-      return;
-    }
-    const created = addStudent({
-      ...newStudentForm,
-      previousPercentage: Number(newStudentForm.previousPercentage),
-      feesTotal: Number(newStudentForm.feesTotal),
-      feesPaid: Number(newStudentForm.feesPaid),
-      scholarshipPercent: newStudentForm.scholarshipType.includes('100')
-        ? 100
-        : newStudentForm.scholarshipType.includes('75')
-          ? 75
-          : newStudentForm.scholarshipType.includes('50')
-            ? 50
-            : 0,
-    });
-    setFormError(null);
-    setShowAddModal(false);
-    handleOpenStudent(created);
-  };
   const studentResults = activeStudent
     ? testResults.filter((r) => r.studentId === activeStudent.id)
     : [];
@@ -380,6 +481,16 @@ export const StudentManagementView = ({ initialStudentId }) => {
                       </div>
                       <div className="text-[11px] text-slate-500">
                         {student.branchName} • {student.className}
+                      </div>
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {getStudentEnrolledSubjects(student, CANONICAL_SUBJECTS).map((sub) => (
+                          <span
+                            key={sub.id}
+                            className="inline-block px-1 py-0.5 rounded text-[9px] font-semibold bg-slate-100 text-slate-700 border border-slate-200"
+                          >
+                            {sub.code}
+                          </span>
+                        ))}
                       </div>
                     </td>
 
@@ -621,23 +732,24 @@ export const StudentManagementView = ({ initialStudentId }) => {
                     <div className="flex items-center justify-between mb-2">
                       <h3 className="font-bold text-slate-900 text-xs uppercase tracking-wider flex items-center gap-1.5">
                         <BookOpen className="h-4 w-4 text-blue-900" />
-                        <span>Enrolled Subject Curriculum</span>
+                        <span>Enrolled Subject Curriculum ({getStudentEnrolledSubjects(activeStudent, CANONICAL_SUBJECTS).length} Subjects)</span>
                       </h3>
-                      <span className="text-[10px] text-blue-800 font-semibold bg-blue-100 px-2 py-0.5 rounded-full border border-blue-200">
-                        {activeStudent.batchName}
+                      <span className="text-[10px] text-blue-800 font-semibold bg-blue-100 px-2.5 py-0.5 rounded-full border border-blue-200">
+                        {activeStudent.branchName} → {activeStudent.className} → {activeStudent.wingName || 'Medical'} → {activeStudent.batchName}
                       </span>
                     </div>
                     <p className="text-[11px] text-slate-500 mb-2.5">
                       Subject combinations are preset templates; individual student subject enrollment is tracked separately per student.
                     </p>
                     <div className="flex flex-wrap gap-2">
-                      {(activeStudent.subjects || ['Physics', 'Chemistry', 'Botany', 'Zoology']).map((sub, idx) => (
+                      {getStudentEnrolledSubjects(activeStudent, CANONICAL_SUBJECTS).map((sub) => (
                         <span
-                          key={idx}
+                          key={sub.id}
                           className="inline-flex items-center gap-1.5 rounded-lg bg-white px-3 py-1.5 text-xs font-bold text-slate-800 border border-slate-200 shadow-2xs"
                         >
                           <span className="h-2 w-2 rounded-full bg-emerald-500" />
-                          {sub}
+                          <span>{sub.name}</span>
+                          <span className="text-[10px] font-mono font-medium text-slate-400">({sub.code})</span>
                         </span>
                       ))}
                     </div>
@@ -822,12 +934,17 @@ export const StudentManagementView = ({ initialStudentId }) => {
       {/* Add New Student Modal */}
       {showAddModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-xs">
-          <div className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
+          <div className="max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
             <div className="flex items-center justify-between pb-3 border-b border-slate-200">
-              <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                <GraduationCap className="h-5 w-5 text-blue-900" />
-                <span>New Student Admission Form</span>
-              </h2>
+              <div>
+                <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                  <GraduationCap className="h-5 w-5 text-blue-900" />
+                  <span>Student Admission &amp; Enrollment Master</span>
+                </h2>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Hierarchy: Branch → Class → Wing → Batch. Independent subject enrollment with optional combo template.
+                </p>
+              </div>
               <button
                 onClick={() => setShowAddModal(false)}
                 className="text-slate-400 hover:text-slate-700"
@@ -836,216 +953,615 @@ export const StudentManagementView = ({ initialStudentId }) => {
               </button>
             </div>
 
-            <form onSubmit={handleAddSubmit} className="mt-4 space-y-4 text-xs">
+            <form onSubmit={handleAddSubmit} className="mt-4 space-y-6 text-xs">
               {formError && (
                 <div className="rounded-lg bg-red-50 border border-red-200 p-2.5 text-xs text-red-700 font-semibold flex items-center gap-2">
                   <AlertTriangle className="h-4 w-4 shrink-0 text-red-600" />
                   <span>{formError}</span>
                 </div>
               )}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">
-                    Student Full Name *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={newStudentForm.name}
-                    onChange={(e) =>
-                      setNewStudentForm({
-                        ...newStudentForm,
-                        name: e.target.value,
-                      })
-                    }
-                    placeholder="e.g. Mehreen Qureshi"
-                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs"
-                  />
-                </div>
 
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">
-                    Gender &amp; DOB
-                  </label>
-                  <div className="flex gap-2">
+              {/* 1. ACADEMIC HIERARCHY */}
+              <div className="rounded-xl border border-blue-100 bg-blue-50/40 p-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  <Layers className="h-4 w-4 text-blue-900" />
+                  <h3 className="font-bold text-slate-900 uppercase tracking-wider text-[11px]">
+                    1. Academic Hierarchy Placement (Branch → Class → Wing → Batch)
+                  </h3>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">
+                      Branch *
+                    </label>
                     <select
-                      value={newStudentForm.gender}
-                      onChange={(e) =>
+                      value={newStudentForm.branchId}
+                      onChange={(e) => {
+                        const newBranchId = e.target.value;
+                        const branchClasses = getClassesForBranch(classes, newBranchId);
+                        const nextClassId = branchClasses[0]?.id || newStudentForm.classId;
+                        const branchWings = getWingsForClass(wings, nextClassId, newBranchId);
+                        const nextWingId = branchWings[0]?.id || newStudentForm.wingId;
+                        const branchBatches = getBatchesByHierarchy(batches, {
+                          branchId: newBranchId,
+                          classId: nextClassId,
+                          wingId: nextWingId,
+                        });
                         setNewStudentForm({
                           ...newStudentForm,
-                          gender: e.target.value,
-                        })
-                      }
-                      className="w-1/2 rounded-lg border border-slate-300 px-3 py-2 text-xs"
+                          branchId: newBranchId,
+                          classId: nextClassId,
+                          wingId: nextWingId,
+                          batchId: branchBatches[0]?.id || batches[0]?.id,
+                        });
+                      }}
+                      className="w-full rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs"
                     >
-                      <option value="Male">Male</option>
-                      <option value="Female">Female</option>
+                      {branches.map((b) => (
+                        <option key={b.id} value={b.id}>
+                          {b.name}
+                        </option>
+                      ))}
                     </select>
-                    <input
-                      type="date"
-                      value={newStudentForm.dob}
-                      onChange={(e) =>
-                        setNewStudentForm({
-                          ...newStudentForm,
-                          dob: e.target.value,
-                        })
-                      }
-                      className="w-1/2 rounded-lg border border-slate-300 px-3 py-2 text-xs"
-                    />
                   </div>
-                </div>
 
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">
-                    Assigned Branch *
-                  </label>
-                  <select
-                    value={newStudentForm.branchId}
-                    onChange={(e) =>
-                      setNewStudentForm({
-                        ...newStudentForm,
-                        branchId: e.target.value,
-                      })
-                    }
-                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs"
-                  >
-                    {branches.map((b) => (
-                      <option key={b.id} value={b.id}>
-                        {b.name} Campus
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">
-                    Target Batch *
-                  </label>
-                  <select
-                    value={newStudentForm.batchId}
-                    onChange={(e) =>
-                      setNewStudentForm({
-                        ...newStudentForm,
-                        batchId: e.target.value,
-                      })
-                    }
-                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs"
-                  >
-                    {batches.map((b) => (
-                      <option key={b.id} value={b.id}>
-                        {b.branchName}: {b.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">
-                    Parent / Guardian Name *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={newStudentForm.parentName}
-                    onChange={(e) =>
-                      setNewStudentForm({
-                        ...newStudentForm,
-                        parentName: e.target.value,
-                      })
-                    }
-                    placeholder="e.g. Farooq Ahmad"
-                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs"
-                  />
-                </div>
-
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">
-                    Guardian Phone *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={newStudentForm.parentPhone}
-                    onChange={(e) =>
-                      setNewStudentForm({
-                        ...newStudentForm,
-                        parentPhone: e.target.value,
-                      })
-                    }
-                    placeholder="+91 94190..."
-                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs"
-                  />
-                </div>
-
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">
-                    Previous School &amp; %
-                  </label>
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={newStudentForm.schoolName}
-                      onChange={(e) =>
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">
+                      Class *
+                    </label>
+                    <select
+                      value={newStudentForm.classId}
+                      onChange={(e) => {
+                        const nextClassId = e.target.value;
+                        const classWings = getWingsForClass(wings, nextClassId, newStudentForm.branchId);
+                        const nextWingId = classWings[0]?.id || newStudentForm.wingId;
+                        const classBatches = getBatchesByHierarchy(batches, {
+                          branchId: newStudentForm.branchId,
+                          classId: nextClassId,
+                          wingId: nextWingId,
+                        });
                         setNewStudentForm({
                           ...newStudentForm,
-                          schoolName: e.target.value,
-                        })
-                      }
-                      placeholder="School name"
-                      className="w-2/3 rounded-lg border border-slate-300 px-3 py-2 text-xs"
-                    />
-                    <input
-                      type="number"
-                      value={newStudentForm.previousPercentage}
-                      onChange={(e) =>
-                        setNewStudentForm({
-                          ...newStudentForm,
-                          previousPercentage: Number(e.target.value),
-                        })
-                      }
-                      placeholder="%"
-                      className="w-1/3 rounded-lg border border-slate-300 px-3 py-2 text-xs"
-                    />
+                          classId: nextClassId,
+                          wingId: nextWingId,
+                          batchId: classBatches[0]?.id || batches[0]?.id,
+                        });
+                      }}
+                      className="w-full rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs"
+                    >
+                      {getClassesForBranch(classes, newStudentForm.branchId).map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name}
+                        </option>
+                      ))}
+                    </select>
                   </div>
-                </div>
 
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">
-                    Scholarship Type
-                  </label>
-                  <select
-                    value={newStudentForm.scholarshipType}
-                    onChange={(e) =>
-                      setNewStudentForm({
-                        ...newStudentForm,
-                        scholarshipType: e.target.value,
-                      })
-                    }
-                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs"
-                  >
-                    <option value="None">None (Standard Tuition)</option>
-                    <option value="CHTQ 100%">CHTQ 100% Waiver</option>
-                    <option value="CHTQ 75%">CHTQ 75% Waiver</option>
-                    <option value="CHTQ 50%">CHTQ 50% Waiver</option>
-                    <option value="BPL Concession">BPL Concession (40%)</option>
-                  </select>
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">
+                      Wing *
+                    </label>
+                    <select
+                      value={newStudentForm.wingId}
+                      onChange={(e) => {
+                        const nextWingId = e.target.value;
+                        const wingBatches = getBatchesByHierarchy(batches, {
+                          branchId: newStudentForm.branchId,
+                          classId: newStudentForm.classId,
+                          wingId: nextWingId,
+                        });
+                        setNewStudentForm({
+                          ...newStudentForm,
+                          wingId: nextWingId,
+                          batchId: wingBatches[0]?.id || batches[0]?.id,
+                        });
+                      }}
+                      className="w-full rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs"
+                    >
+                      {getWingsForClass(wings, newStudentForm.classId, newStudentForm.branchId).map((w) => (
+                        <option key={w.id} value={w.id}>
+                          {w.name} Wing
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">
+                      Target Batch *
+                    </label>
+                    <select
+                      value={newStudentForm.batchId}
+                      onChange={(e) =>
+                        setNewStudentForm({
+                          ...newStudentForm,
+                          batchId: e.target.value,
+                        })
+                      }
+                      className="w-full rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs"
+                    >
+                      {batches
+                        .filter(
+                          (b) =>
+                            (!newStudentForm.branchId || b.branchId === newStudentForm.branchId)
+                        )
+                        .map((b) => (
+                          <option key={b.id} value={b.id}>
+                            {b.name} ({b.className})
+                          </option>
+                        ))}
+                    </select>
+                  </div>
                 </div>
               </div>
 
-              <div className="flex justify-end gap-2 pt-4 border-t border-slate-200">
-                <button
-                  type="button"
-                  onClick={() => setShowAddModal(false)}
-                  className="rounded-lg border border-slate-300 px-4 py-2 font-semibold text-slate-700 hover:bg-slate-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="rounded-lg bg-blue-900 px-5 py-2 font-bold text-white hover:bg-blue-800"
-                >
-                  Confirm &amp; Enrol Student
-                </button>
+              {/* 2. SUBJECT MASTER & STUDENT ENROLLMENT */}
+              <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-4 space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <BookOpen className="h-4 w-4 text-blue-900" />
+                    <h3 className="font-bold text-slate-900 uppercase tracking-wider text-[11px]">
+                      2. Subject Combo (Optional) &amp; Actual Subject Enrollment
+                    </h3>
+                  </div>
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800">
+                    {newStudentForm.enrolledSubjects.length} Subjects Selected
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-500">
+                  Select an optional combo template to prefill subjects, then customize independently. Students can enroll in 1 subject, 2 subjects, a standard combo, or modified combo.
+                </p>
+
+                {/* Combo Selector */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">
+                      Subject Combo Template (Optional)
+                    </label>
+                    <select
+                      value={newStudentForm.subjectComboId || 'custom'}
+                      onChange={(e) => handleComboSelect(e.target.value)}
+                      className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-800"
+                    >
+                      <option value="custom">No Combo / Custom Individual Subjects</option>
+                      {CANONICAL_SUBJECT_COMBOS.map((combo) => (
+                        <option key={combo.id} value={combo.id}>
+                          {combo.name} Template ({combo.code})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="text-[11px] text-slate-500 flex items-center">
+                    <span>
+                      {newStudentForm.subjectComboId ? (
+                        <>
+                          Prefilled template: <strong>{CANONICAL_SUBJECT_COMBOS.find((c) => c.id === newStudentForm.subjectComboId)?.name}</strong>. You can still modify individual subject enrollment below.
+                        </>
+                      ) : (
+                        <>Custom individual subject enrollment mode active. Select subjects individually.</>
+                      )}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Actual Subjects Checkboxes */}
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1.5">
+                    Actual Enrolled Subjects (Canonical Subject Master) *
+                  </label>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    {CANONICAL_SUBJECTS.map((sub) => {
+                      const isSelected = newStudentForm.enrolledSubjects.includes(sub.id);
+                      return (
+                        <label
+                          key={sub.id}
+                          className={`flex items-center gap-2 p-2 rounded-lg border cursor-pointer transition text-xs select-none ${
+                            isSelected
+                              ? 'bg-blue-50 border-blue-300 text-blue-900 font-semibold'
+                              : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => handleToggleSubject(sub.id)}
+                            className="rounded text-blue-900 h-3.5 w-3.5"
+                          />
+                          <span>{sub.name}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              {/* 3. STUDENT PROFILE INFORMATION */}
+              <div className="space-y-3">
+                <h3 className="font-bold text-slate-900 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+                  <Users className="h-4 w-4 text-slate-700" />
+                  <span>3. Student Profile Information</span>
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">
+                      Student Full Name *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={newStudentForm.name}
+                      onChange={(e) =>
+                        setNewStudentForm({
+                          ...newStudentForm,
+                          name: e.target.value,
+                        })
+                      }
+                      placeholder="e.g. Mehreen Qureshi"
+                      className="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">
+                      Gender &amp; DOB *
+                    </label>
+                    <div className="flex gap-2">
+                      <select
+                        value={newStudentForm.gender}
+                        onChange={(e) =>
+                          setNewStudentForm({
+                            ...newStudentForm,
+                            gender: e.target.value,
+                          })
+                        }
+                        className="w-1/2 rounded-lg border border-slate-300 px-3 py-2 text-xs"
+                      >
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                      </select>
+                      <input
+                        type="date"
+                        value={newStudentForm.dob}
+                        onChange={(e) =>
+                          setNewStudentForm({
+                            ...newStudentForm,
+                            dob: e.target.value,
+                          })
+                        }
+                        className="w-1/2 rounded-lg border border-slate-300 px-3 py-2 text-xs"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">
+                      Student Phone
+                    </label>
+                    <input
+                      type="text"
+                      value={newStudentForm.phone}
+                      onChange={(e) =>
+                        setNewStudentForm({
+                          ...newStudentForm,
+                          phone: e.target.value,
+                        })
+                      }
+                      placeholder="+91 97970 00000"
+                      className="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">
+                      Student Email
+                    </label>
+                    <input
+                      type="email"
+                      value={newStudentForm.email}
+                      onChange={(e) =>
+                        setNewStudentForm({
+                          ...newStudentForm,
+                          email: e.target.value,
+                        })
+                      }
+                      placeholder="student@careerheights.demo"
+                      className="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs"
+                    />
+                  </div>
+
+                  <div className="sm:col-span-2">
+                    <label className="block font-semibold text-slate-700 mb-1">
+                      Residential Address
+                    </label>
+                    <input
+                      type="text"
+                      value={newStudentForm.address}
+                      onChange={(e) =>
+                        setNewStudentForm({
+                          ...newStudentForm,
+                          address: e.target.value,
+                        })
+                      }
+                      placeholder="Street, Town, District, J&K"
+                      className="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">
+                      Previous School &amp; 10th %
+                    </label>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={newStudentForm.schoolName}
+                        onChange={(e) =>
+                          setNewStudentForm({
+                            ...newStudentForm,
+                            schoolName: e.target.value,
+                          })
+                        }
+                        placeholder="School name"
+                        className="w-2/3 rounded-lg border border-slate-300 px-3 py-2 text-xs"
+                      />
+                      <input
+                        type="number"
+                        step="0.1"
+                        value={newStudentForm.previousPercentage}
+                        onChange={(e) =>
+                          setNewStudentForm({
+                            ...newStudentForm,
+                            previousPercentage: Number(e.target.value),
+                          })
+                        }
+                        placeholder="%"
+                        className="w-1/3 rounded-lg border border-slate-300 px-3 py-2 text-xs"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">
+                      Scholarship Category
+                    </label>
+                    <select
+                      value={newStudentForm.scholarshipType}
+                      onChange={(e) =>
+                        setNewStudentForm({
+                          ...newStudentForm,
+                          scholarshipType: e.target.value,
+                        })
+                      }
+                      className="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs"
+                    >
+                      <option value="None">None (Standard Tuition)</option>
+                      <option value="CHTQ 100%">CHTQ 100% Waiver</option>
+                      <option value="CHTQ 75%">CHTQ 75% Waiver</option>
+                      <option value="CHTQ 50%">CHTQ 50% Waiver</option>
+                      <option value="BPL Concession">BPL Concession (40%)</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* 4. PARENT & GUARDIAN DETAILS */}
+              <div className="space-y-3">
+                <h3 className="font-bold text-slate-900 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+                  <Phone className="h-4 w-4 text-slate-700" />
+                  <span>4. Parent / Guardian Details</span>
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">
+                      Primary Guardian Name *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={newStudentForm.parentName}
+                      onChange={(e) =>
+                        setNewStudentForm({
+                          ...newStudentForm,
+                          parentName: e.target.value,
+                          fatherName: newStudentForm.fatherName || e.target.value,
+                        })
+                      }
+                      placeholder="e.g. Farooq Ahmad Qureshi"
+                      className="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">
+                      Guardian Phone Number *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={newStudentForm.parentPhone}
+                      onChange={(e) =>
+                        setNewStudentForm({
+                          ...newStudentForm,
+                          parentPhone: e.target.value,
+                          fatherPhone: newStudentForm.fatherPhone || e.target.value,
+                        })
+                      }
+                      placeholder="+91 94190 00000"
+                      className="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">
+                      Guardian Email
+                    </label>
+                    <input
+                      type="email"
+                      value={newStudentForm.parentEmail}
+                      onChange={(e) =>
+                        setNewStudentForm({
+                          ...newStudentForm,
+                          parentEmail: e.target.value,
+                        })
+                      }
+                      placeholder="guardian@gmail.demo"
+                      className="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">
+                      Guardian Occupation
+                    </label>
+                    <input
+                      type="text"
+                      value={newStudentForm.parentOccupation}
+                      onChange={(e) =>
+                        setNewStudentForm({
+                          ...newStudentForm,
+                          parentOccupation: e.target.value,
+                        })
+                      }
+                      placeholder="e.g. Government Service / Self-Employed"
+                      className="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* 5. VERIFICATION DOCUMENTS */}
+              <div className="space-y-2">
+                <h3 className="font-bold text-slate-900 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+                  <FileCheck className="h-4 w-4 text-slate-700" />
+                  <span>5. Documents Verification Checklist</span>
+                </h3>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {['Aadhaar Card', '10th Marksheet', 'State PRC / Domicile', 'Passport Photos'].map((doc) => {
+                    const isDocAttached = newStudentForm.submittedDocuments.includes(doc);
+                    return (
+                      <label
+                        key={doc}
+                        className={`flex items-center gap-2 p-2 rounded-lg border cursor-pointer text-xs select-none ${
+                          isDocAttached
+                            ? 'bg-emerald-50 border-emerald-300 text-emerald-900 font-semibold'
+                            : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isDocAttached}
+                          onChange={() => handleToggleDocument(doc)}
+                          className="rounded text-emerald-700 h-3.5 w-3.5"
+                        />
+                        <span>{doc}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* 6. PORTAL LOGIN CREDENTIALS */}
+              <div className="space-y-2">
+                <h3 className="font-bold text-slate-900 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+                  <Key className="h-4 w-4 text-slate-700" />
+                  <span>6. Student Portal Login Setup</span>
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-slate-50 p-3 rounded-xl border border-slate-200">
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">
+                      Portal Username (Auto-Generated)
+                    </label>
+                    <input
+                      type="text"
+                      value={
+                        newStudentForm.portalLoginUsername ||
+                        `ch.${(newStudentForm.name || 'student').toLowerCase().replace(/\s+/g, '')}.26`
+                      }
+                      onChange={(e) =>
+                        setNewStudentForm({
+                          ...newStudentForm,
+                          portalLoginUsername: e.target.value,
+                        })
+                      }
+                      placeholder="e.g. ch.mehreen.26"
+                      className="w-full rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-mono"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">
+                      Temporary First Login Password
+                    </label>
+                    <input
+                      type="text"
+                      value={newStudentForm.portalLoginTemporaryPassword}
+                      onChange={(e) =>
+                        setNewStudentForm({
+                          ...newStudentForm,
+                          portalLoginTemporaryPassword: e.target.value,
+                        })
+                      }
+                      className="w-full rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-mono font-bold text-slate-800"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* 7. FINANCIALS */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">
+                    Total Academic Course Fee (₹)
+                  </label>
+                  <input
+                    type="number"
+                    value={newStudentForm.feesTotal}
+                    onChange={(e) =>
+                      setNewStudentForm({
+                        ...newStudentForm,
+                        feesTotal: Number(e.target.value),
+                      })
+                    }
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">
+                    Initial Fee Collected at Admission (₹)
+                  </label>
+                  <input
+                    type="number"
+                    value={newStudentForm.feesPaid}
+                    onChange={(e) =>
+                      setNewStudentForm({
+                        ...newStudentForm,
+                        feesPaid: Number(e.target.value),
+                      })
+                    }
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs font-bold text-emerald-700"
+                  />
+                </div>
+              </div>
+
+              {/* Modal Actions */}
+              <div className="flex items-center justify-between pt-4 border-t border-slate-200">
+                <div className="text-xs text-slate-500">
+                  Enrolling with <strong>{newStudentForm.enrolledSubjects.length} subjects</strong> in batch <strong>{batches.find(b => b.id === newStudentForm.batchId)?.name || '2024-A'}</strong>.
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowAddModal(false)}
+                    className="rounded-lg border border-slate-300 px-4 py-2 font-semibold text-slate-700 hover:bg-slate-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="rounded-lg bg-blue-900 px-5 py-2 font-bold text-white hover:bg-blue-800 shadow-xs"
+                  >
+                    Confirm &amp; Enrol Student
+                  </button>
+                </div>
               </div>
             </form>
           </div>

@@ -57,6 +57,17 @@ import {
   getVisibleReports,
   isAllBranches,
 } from '../utils/branchScoping';
+import {
+  CANONICAL_SUBJECTS,
+  CANONICAL_SUBJECT_COMBOS,
+  getClassesForBranch,
+  getWingsForClass,
+  getBatchesByHierarchy,
+  getStudentEnrolledSubjects,
+  getStudentEnrolledSubjectIds,
+  isStudentEnrolledInSubject,
+  getStudentsForTeacher,
+} from '../utils/academicModel';
 const ErpDataContext = createContext(void 0);
 export const ErpDataProvider = ({ children }) => {
   const { currentUser, setCustomRolesRegistry, activeBranchId, activeBranchFilter } = useAuth();
@@ -173,15 +184,32 @@ export const ErpDataProvider = ({ children }) => {
       address: studentData.address || `${branch.name} Town, J&K`,
       branchId: branch.id,
       branchName: branch.name,
-      wingId: batch.wingId,
-      classId: batch.classId,
-      className: batch.className,
+      classId: studentData.classId || batch.classId,
+      className: studentData.className || batch.className || 'Class 12',
+      wingId: studentData.wingId || batch.wingId,
+      wingName: studentData.wingName || batch.wingName || 'Medical',
       batchId: batch.id,
       batchName: batch.name,
-      parentName: studentData.parentName || 'Parent Guardian',
-      parentPhone: studentData.parentPhone || '+91 94191 99999',
+      subjectComboId: studentData.subjectComboId || null,
+      enrolledSubjects:
+        Array.isArray(studentData.enrolledSubjects) && studentData.enrolledSubjects.length > 0
+          ? studentData.enrolledSubjects
+          : studentData.subjectComboId === 'combo-med'
+          ? ['sub-phy', 'sub-chem', 'sub-bot', 'sub-zoo']
+          : studentData.subjectComboId === 'combo-eng'
+          ? ['sub-phy', 'sub-chem', 'sub-math']
+          : ['sub-phy'],
+      parentName: studentData.parentName || studentData.fatherName || 'Parent Guardian',
+      parentPhone: studentData.parentPhone || studentData.fatherPhone || '+91 94191 99999',
       parentEmail: studentData.parentEmail || 'parent@gmail.demo',
       parentOccupation: studentData.parentOccupation || 'Self-Employed',
+      fatherName: studentData.fatherName || studentData.parentName || 'Father',
+      fatherPhone: studentData.fatherPhone || studentData.parentPhone || '+91 94191 99999',
+      motherName: studentData.motherName || 'Mother',
+      motherPhone: studentData.motherPhone || '+91 94191 88888',
+      guardianName: studentData.guardianName || studentData.parentName || 'Guardian',
+      guardianPhone: studentData.guardianPhone || studentData.parentPhone || '+91 94191 99999',
+      guardianEmail: studentData.guardianEmail || studentData.parentEmail || 'guardian@demo.com',
       schoolName: studentData.schoolName || 'Govt Model School',
       previousPercentage: studentData.previousPercentage || 88.5,
       admissionDate: admDate,
@@ -195,8 +223,11 @@ export const ErpDataProvider = ({ children }) => {
       feesPending: pending,
       feesOverdue: 0,
       academicRisk: 'Low',
-      documentsCount: 2,
-      pendingDocuments: 1,
+      documentsCount: studentData.documentsCount !== undefined ? studentData.documentsCount : 3,
+      pendingDocuments: studentData.pendingDocuments !== undefined ? studentData.pendingDocuments : 1,
+      submittedDocuments: studentData.submittedDocuments || ['Aadhaar Card', '10th Marksheet'],
+      portalLoginUsername: studentData.portalLoginUsername || `ch.${id.replace('st-', '')}.26`,
+      portalLoginTemporaryPassword: studentData.portalLoginTemporaryPassword || 'CH@2026!',
       remarks:
         studentData.remarks || 'Newly enrolled student. Orientation scheduled.',
     };
@@ -1103,11 +1134,15 @@ export const ErpDataProvider = ({ children }) => {
     }
   };
 
-  const getTeacherAssignedStudents = (teacherId, batchId, subjectId) => {
-    return students.filter((st) => {
-      const matchBatch = !batchId || st.batchId === batchId;
-      const enrolled = Array.isArray(st.enrolledSubjects) && st.enrolledSubjects.includes(subjectId);
-      return matchBatch && enrolled;
+  const getTeacherAssignedStudents = (teacherId, batchId, subjectId, teacherName) => {
+    return getStudentsForTeacher({
+      teacherId,
+      teacherName,
+      teacherAssignments,
+      students,
+      batchId,
+      subjectId,
+      isSuperOrHq: currentUser?.role === 'SUPER_ADMIN' || currentUser?.role === 'HQ_ADMIN',
     });
   };
 
@@ -1333,6 +1368,15 @@ export const ErpDataProvider = ({ children }) => {
         payStaffSalary,
         markTeacherSelfAttendance,
         getTeacherAssignedStudents,
+        CANONICAL_SUBJECTS,
+        CANONICAL_SUBJECT_COMBOS,
+        getClassesForBranch,
+        getWingsForClass,
+        getBatchesByHierarchy,
+        getStudentEnrolledSubjects,
+        getStudentEnrolledSubjectIds,
+        isStudentEnrolledInSubject,
+        getStudentsForTeacher,
         addEnquiry,
         updateEnquiryStatus,
         convertEnquiryToAdmission,
