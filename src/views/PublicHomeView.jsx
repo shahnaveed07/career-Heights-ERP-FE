@@ -53,7 +53,16 @@ export const PublicHomeView = ({ onOpenLogin, onSelectPublicPage, initialPage = 
 
   const handleNavigate = (pageId) => {
     setActivePage(pageId);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    if (pageId === 'home') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else {
+      const el = document.getElementById(pageId);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } else {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    }
   };
 
   // Distinct courses derived from Wings & Classes
@@ -160,7 +169,7 @@ export const PublicHomeView = ({ onOpenLogin, onSelectPublicPage, initialPage = 
         {/* ======================================================== */}
         {/* SECTION 1: HERO SECTION                                 */}
         {/* ======================================================== */}
-        <section className="relative overflow-hidden bg-gradient-to-b from-slate-950 via-slate-900 to-blue-950 text-white pt-12 pb-16 sm:pt-20 sm:pb-24 lg:pt-24 lg:pb-28">
+        <section id="home" className="relative overflow-hidden bg-gradient-to-b from-slate-950 via-slate-900 to-blue-950 text-white pt-12 pb-16 sm:pt-20 sm:pb-24 lg:pt-24 lg:pb-28">
           {/* Subtle geometric pattern overlay */}
           <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#3b82f6_1px,transparent_1px)] [background-size:24px_24px] pointer-events-none" />
 

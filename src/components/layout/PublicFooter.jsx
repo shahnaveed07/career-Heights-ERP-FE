@@ -10,6 +10,7 @@ import {
   Award,
   Users,
 } from 'lucide-react';
+import { PUBLIC_NAV_ITEMS } from '../../data/publicNavItems';
 
 export const PublicFooter = ({ onNavigate, onOpenLogin, branches = [] }) => {
   return (
@@ -95,54 +96,17 @@ export const PublicFooter = ({ onNavigate, onOpenLogin, branches = [] }) => {
               Quick Links
             </h4>
             <ul className="space-y-2 text-xs text-slate-400">
-              <li>
-                <button
-                  onClick={() => onNavigate('home')}
-                  className="hover:text-white transition flex items-center gap-1.5"
-                >
-                  <ArrowRight className="h-3 w-3 text-blue-400" /> Home
-                </button>
-              </li>
-              <li>
-                <button
-                  onClick={() => onNavigate('about')}
-                  className="hover:text-white transition flex items-center gap-1.5"
-                >
-                  <ArrowRight className="h-3 w-3 text-blue-400" /> About Institute
-                </button>
-              </li>
-              <li>
-                <button
-                  onClick={() => onNavigate('courses')}
-                  className="hover:text-white transition flex items-center gap-1.5"
-                >
-                  <ArrowRight className="h-3 w-3 text-blue-400" /> Courses Offered
-                </button>
-              </li>
-              <li>
-                <button
-                  onClick={() => onNavigate('batches')}
-                  className="hover:text-white transition flex items-center gap-1.5"
-                >
-                  <ArrowRight className="h-3 w-3 text-blue-400" /> Active Batches
-                </button>
-              </li>
-              <li>
-                <button
-                  onClick={() => onNavigate('results')}
-                  className="hover:text-white transition flex items-center gap-1.5"
-                >
-                  <ArrowRight className="h-3 w-3 text-blue-400" /> Academic Results
-                </button>
-              </li>
-              <li>
-                <button
-                  onClick={() => onNavigate('contact')}
-                  className="hover:text-white transition flex items-center gap-1.5"
-                >
-                  <ArrowRight className="h-3 w-3 text-blue-400" /> Contact &amp; Admissions
-                </button>
-              </li>
+              {PUBLIC_NAV_ITEMS.map((item) => (
+                <li key={item.id}>
+                  <button
+                    onClick={() => onNavigate(item.id)}
+                    className="hover:text-white transition flex items-center gap-1.5 focus:outline-none focus:underline"
+                  >
+                    <ArrowRight className="h-3 w-3 text-blue-400" />
+                    <span>{item.label}</span>
+                  </button>
+                </li>
+              ))}
             </ul>
           </div>
 
