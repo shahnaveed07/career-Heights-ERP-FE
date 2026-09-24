@@ -1,12 +1,24 @@
-import { CalendarCheck, Award, CreditCard, PhoneCall } from 'lucide-react';
+import { useState } from 'react';
+import { CalendarCheck, Award, CreditCard, PhoneCall, Users } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useErpData } from '../context/ErpDataContext';
 import { StudentAvatar } from '../components/common/StudentAvatar';
 export const ParentPortalView = () => {
   const { currentUser } = useAuth();
   const { students, testResults, feeReceipts } = useErpData();
-  const child =
-    students.find((s) => s.id === currentUser?.linkedStudentId) || students[0];
+
+  // Find linked children
+  const linkedIds = currentUser?.linkedStudentIds || (currentUser?.linkedStudentId ? [currentUser.linkedStudentId] : []);
+  const parentChildren = students.filter(
+    (s) => linkedIds.includes(s.id) || s.parentName?.toLowerCase().includes(currentUser?.name?.toLowerCase() || '')
+  );
+  const eligibleChildren = parentChildren.length > 0 ? parentChildren : [students[0]];
+
+  const [selectedChildId, setSelectedChildId] = useState(
+    currentUser?.linkedStudentId || eligibleChildren[0]?.id
+  );
+
+  const child = eligibleChildren.find((s) => s.id === selectedChildId) || eligibleChildren[0];
   const childResults = testResults.filter((r) => r.studentId === child?.id);
   const childReceipts = feeReceipts.filter((r) => r.studentId === child?.id);
   if (!child) {
@@ -18,6 +30,37 @@ export const ParentPortalView = () => {
   }
   return (
     <div className="space-y-6">
+      {/* Multi-Child Selector if parent has multiple wards */}
+      {eligibleChildren.length > 1 && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-blue-200 bg-blue-50/70 p-3 shadow-2xs">
+          <div className="flex items-center gap-2">
+            <Users className="h-4 w-4 text-blue-900" />
+            <span className="text-xs font-bold text-blue-950">
+              Multiple Wards Enrolled:
+            </span>
+            <span className="text-xs text-blue-800">
+              Select which child's dossier to inspect:
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            {eligibleChildren.map((ward) => (
+              <button
+                key={ward.id}
+                onClick={() => setSelectedChildId(ward.id)}
+                className={`rounded-lg px-3 py-1.5 text-xs font-bold transition flex items-center gap-1.5 ${
+                  child.id === ward.id
+                    ? 'bg-blue-900 text-white shadow-xs'
+                    : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-100'
+                }`}
+              >
+                <span>{ward.name}</span>
+                <span className="text-[10px] font-mono opacity-80">({ward.studentId})</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Header Banner */}
       <div className="rounded-2xl bg-gradient-to-r from-slate-900 to-blue-950 p-6 text-white shadow-md">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">

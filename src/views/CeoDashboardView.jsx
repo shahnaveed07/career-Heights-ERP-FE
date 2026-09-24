@@ -28,7 +28,7 @@ export const CeoDashboardView = ({
     documents,
     feeReceipts,
   } = useErpData();
-  const { activeBranchFilter, setActiveBranchFilter } = useAuth();
+  const { activeBranchFilter, setActiveBranchFilter, currentUser } = useAuth();
   const [drillLevel, setDrillLevel] = useState('hq');
   const [selectedBranchId, setSelectedBranchId] = useState(null);
   const [selectedWingId, setSelectedWingId] = useState(null);
@@ -163,18 +163,19 @@ export const CeoDashboardView = ({
           <div>
             <div className="flex items-center gap-2">
               <span className="rounded-md bg-blue-900 px-2 py-0.5 text-xs font-bold text-white tracking-wider uppercase">
-                EXECUTIVE INTELLIGENCE
+                {currentUser?.role === 'branch_admin' ? 'BRANCH EXECUTIVE INTELLIGENCE' : currentUser?.role === 'hq_admin' ? 'HQ OPERATIONS INTELLIGENCE' : 'EXECUTIVE INTELLIGENCE'}
               </span>
               <span className="text-xs font-semibold text-slate-500">
-                Live Consolidated View
+                {activeBranchFilter === 'all' ? 'All 5 Campuses Consolidated' : `${branches.find(b => b.id === activeBranchFilter)?.name || 'Branch'} Campus Live View`}
               </span>
             </div>
             <h1 className="mt-2 text-2xl sm:text-3xl font-black tracking-tight text-slate-900">
-              CAREER HEIGHTS — CEO DASHBOARD
+              CAREER HEIGHTS — {currentUser?.role === 'branch_admin' ? `${currentUser?.branchName || 'BRANCH'} COMMAND CONSOLE` : currentUser?.role === 'hq_admin' ? 'HQ OPERATIONS CONSOLE' : 'CEO DASHBOARD'}
             </h1>
             <p className="mt-1 text-xs sm:text-sm text-slate-500">
-              Multi-branch centralized command for Handwara, Qaziabad,
-              Dangiwacha, Kalambad &amp; Unso campuses.
+              {currentUser?.role === 'branch_admin' 
+                ? `Branch Director: ${currentUser?.name} • Managing ${currentUser?.branchName || 'Assigned'} Campus operations and batch schedules.`
+                : 'Multi-branch centralized command for Handwara, Qaziabad, Dangiwacha, Kalambad & Unso campuses.'}
             </p>
           </div>
 

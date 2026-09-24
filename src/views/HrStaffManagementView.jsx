@@ -15,7 +15,8 @@ import { StudentAvatar } from '../components/common/StudentAvatar';
 export const HrStaffManagementView = () => {
   const { employees, leaveRequests, updateLeaveStatus, branches } =
     useErpData();
-  const { activeBranchFilter } = useAuth();
+  const { activeBranchFilter, can, uiMode } = useAuth();
+  const canManageLeaves = uiMode !== 'view' && (can('users', 'edit') || can('users', 'add'));
   const [activeTab, setActiveTab] = useState('directory');
   const [searchTerm, setSearchTerm] = useState('');
   const [departmentFilter, setDepartmentFilter] = useState('all');
@@ -301,26 +302,32 @@ export const HrStaffManagementView = () => {
 
                     <div className="flex items-center gap-2">
                       {req.status === 'pending' ? (
-                        <>
-                          <button
-                            onClick={() =>
-                              updateLeaveStatus(req.id, 'approved')
-                            }
-                            className="flex items-center gap-1 rounded-lg bg-emerald-600 px-3 py-1.5 font-bold text-white hover:bg-emerald-700 text-xs shadow-2xs"
-                          >
-                            <CheckCircle2 className="h-3.5 w-3.5" />
-                            <span>Approve</span>
-                          </button>
-                          <button
-                            onClick={() =>
-                              updateLeaveStatus(req.id, 'rejected')
-                            }
-                            className="flex items-center gap-1 rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 font-bold text-red-700 hover:bg-red-100 text-xs"
-                          >
-                            <XCircle className="h-3.5 w-3.5" />
-                            <span>Reject</span>
-                          </button>
-                        </>
+                        canManageLeaves ? (
+                          <>
+                            <button
+                              onClick={() =>
+                                updateLeaveStatus(req.id, 'approved')
+                              }
+                              className="flex items-center gap-1 rounded-lg bg-emerald-600 px-3 py-1.5 font-bold text-white hover:bg-emerald-700 text-xs shadow-2xs"
+                            >
+                              <CheckCircle2 className="h-3.5 w-3.5" />
+                              <span>Approve</span>
+                            </button>
+                            <button
+                              onClick={() =>
+                                updateLeaveStatus(req.id, 'rejected')
+                              }
+                              className="flex items-center gap-1 rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 font-bold text-red-700 hover:bg-red-100 text-xs"
+                            >
+                              <XCircle className="h-3.5 w-3.5" />
+                              <span>Reject</span>
+                            </button>
+                          </>
+                        ) : (
+                          <span className="rounded bg-amber-50 text-amber-800 border border-amber-200 px-2 py-0.5 text-[11px] font-semibold">
+                            Pending Approval (View Only)
+                          </span>
+                        )
                       ) : (
                         <span
                           className={`rounded px-2.5 py-1 text-xs font-bold ${req.status === 'approved' ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'}`}

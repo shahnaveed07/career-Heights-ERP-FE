@@ -3,6 +3,7 @@ import { ArrowLeft, Lock } from 'lucide-react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ErpDataProvider } from './context/ErpDataContext';
 import { AppLayout } from './components/layout/AppLayout';
+import { PublicHomeView } from './views/PublicHomeView';
 import { LoginView } from './views/LoginView';
 import { CeoDashboardView } from './views/CeoDashboardView';
 import { StudentManagementView } from './views/StudentManagementView';
@@ -22,6 +23,7 @@ import { CommunicationCentreView } from './views/CommunicationCentreView';
 import { InventoryAssetsView } from './views/InventoryAssetsView';
 import { AuditLogsView } from './views/AuditLogsView';
 import { ReportsAnalyticsView } from './views/ReportsAnalyticsView';
+
 const MODULE_PERMISSIONS = {
   dashboard: ['*'],
   ceo_dashboard: ['ceo', 'hq_admin'],
@@ -64,35 +66,70 @@ const MODULE_PERMISSIONS = {
   audit_logs: ['ceo', 'hq_admin'],
   reports: ['ceo', 'hq_admin', 'branch_admin', 'accountant'],
 };
-const ErpContent = () => {
+
+const MainAppRouter = () => {
   const { currentUser, isAuthenticated, can } = useAuth();
+  // Navigation mode: 'public' (Public Coaching Institute Website) | 'login' (ERP Login Screen) | 'erp' (ERP Dashboard)
+  const [currentView, setCurrentView] = useState(() => {
+    // If user is already authenticated via saved session, go directly to erp
+    const saved = localStorage.getItem('career_heights_user');
+    return saved ? 'erp' : 'public';
+  });
+
+  const [publicInitialPage, setPublicInitialPage] = useState('home');
   const [activeModule, setActiveModule] = useState('dashboard');
   const [focusedStudentId, setFocusedStudentId] = useState(null);
+
+  // Synchronize when authentication state changes
   useEffect(() => {
-    if (!currentUser) return;
-    if (currentUser.role === 'student') {
-      setActiveModule('student_portal');
-    } else if (currentUser.role === 'parent') {
-      setActiveModule('parent_portal');
-    } else if (currentUser.role === 'faculty') {
-      setActiveModule('faculty_portal');
-    } else if (currentUser.role === 'counsellor') {
-      setActiveModule('admissions_crm');
-    } else if (currentUser.role === 'accountant') {
-      setActiveModule('fees');
-    } else if (currentUser.role === 'hr_manager') {
-      setActiveModule('hr_staff');
-    } else {
-      setActiveModule('ceo_dashboard');
+    if (isAuthenticated && currentUser) {
+      setCurrentView('erp');
+      if (currentUser.role === 'student') {
+        setActiveModule('student_portal');
+      } else if (currentUser.role === 'parent') {
+        setActiveModule('parent_portal');
+      } else if (currentUser.role === 'faculty') {
+        setActiveModule('faculty_portal');
+      } else if (currentUser.role === 'counsellor') {
+        setActiveModule('admissions_crm');
+      } else if (currentUser.role === 'accountant') {
+        setActiveModule('fees');
+      } else if (currentUser.role === 'hr_manager') {
+        setActiveModule('hr_staff');
+      } else {
+        setActiveModule('ceo_dashboard');
+      }
+    } else if (!isAuthenticated && currentView === 'erp') {
+      setCurrentView('public');
     }
-  }, [currentUser?.role, currentUser?.id]);
-  if (!isAuthenticated || !currentUser) {
-    return <LoginView />;
-  }
+  }, [isAuthenticated, currentUser?.role, currentUser?.id]);
+
   const handleNavigateToStudent = (studentId) => {
     setFocusedStudentId(studentId);
     setActiveModule('students');
   };
+
+  // If viewing Public Coaching Website
+  if (currentView === 'public') {
+    return (
+      <PublicHomeView
+        initialPage={publicInitialPage}
+        onOpenLogin={() => setCurrentView('login')}
+        onSelectPublicPage={(page) => setPublicInitialPage(page)}
+      />
+    );
+  }
+
+  // If viewing ERP Login Page
+  if (currentView === 'login' || (!isAuthenticated && currentView === 'erp')) {
+    return (
+      <LoginView
+        onBackToHome={() => setCurrentView('public')}
+      />
+    );
+  }
+
+  // Authenticated ERP Dashboard layout
   const renderActiveModule = () => {
     const hasAccess = activeModule === 'dashboard' || can(activeModule, 'view');
     if (!hasAccess) {
@@ -107,23 +144,23 @@ const ErpContent = () => {
           <p className="text-sm text-slate-500 max-w-md mb-6">
             Your current account role (
             <span className="font-semibold text-slate-700">
-              {currentUser.role.replace('_', ' ').toUpperCase()}
+              {currentUser?.role?.replace('_', ' ').toUpperCase()}
             </span>
             ) does not have security clearance to view the <strong>{activeModule.replace('_', ' ')}</strong> module under institution governance policies.
           </p>
           <button
             onClick={() => {
-              if (currentUser.role === 'student')
+              if (currentUser?.role === 'student')
                 setActiveModule('student_portal');
-              else if (currentUser.role === 'parent')
+              else if (currentUser?.role === 'parent')
                 setActiveModule('parent_portal');
-              else if (currentUser.role === 'faculty')
+              else if (currentUser?.role === 'faculty')
                 setActiveModule('faculty_portal');
-              else if (currentUser.role === 'counsellor')
+              else if (currentUser?.role === 'counsellor')
                 setActiveModule('admissions_crm');
-              else if (currentUser.role === 'accountant')
+              else if (currentUser?.role === 'accountant')
                 setActiveModule('fees');
-              else if (currentUser.role === 'hr_manager')
+              else if (currentUser?.role === 'hr_manager')
                 setActiveModule('hr_staff');
               else setActiveModule('ceo_dashboard');
             }}
@@ -135,14 +172,12 @@ const ErpContent = () => {
         </div>
       );
     }
+
     switch (activeModule) {
       case 'dashboard':
-        if (currentUser.role === 'student') return <StudentPortalView />;
-        if (currentUser.role === 'parent') return <ParentPortalView />;
-        if (currentUser.role === 'faculty') return <FacultyPortalView />;
-        if (currentUser.role === 'counsellor') return <AdmissionsCrmView />;
-        if (currentUser.role === 'accountant') return <FeesAccountsView />;
-        if (currentUser.role === 'hr_manager') return <HrStaffManagementView />;
+        if (currentUser?.role === 'student') return <StudentPortalView />;
+        if (currentUser?.role === 'parent') return <ParentPortalView />;
+        if (currentUser?.role === 'faculty') return <FacultyPortalView />;
         return (
           <CeoDashboardView
             onNavigateToStudent={handleNavigateToStudent}
@@ -164,9 +199,7 @@ const ErpContent = () => {
         return <FacultyPortalView />;
       case 'students':
         return (
-          <StudentManagementView
-            initialStudentId={focusedStudentId || void 0}
-          />
+          <StudentManagementView initialSelectedStudentId={focusedStudentId} />
         );
       case 'admissions_crm':
         return <AdmissionsCrmView />;
@@ -203,17 +236,23 @@ const ErpContent = () => {
         );
     }
   };
+
   return (
-    <AppLayout activeModule={activeModule} onSelectModule={setActiveModule}>
+    <AppLayout
+      activeModule={activeModule}
+      onSelectModule={setActiveModule}
+      onGoToPublicWebsite={() => setCurrentView('public')}
+    >
       {renderActiveModule()}
     </AppLayout>
   );
 };
+
 export default function App() {
   return (
     <AuthProvider>
       <ErpDataProvider>
-        <ErpContent />
+        <MainAppRouter />
       </ErpDataProvider>
     </AuthProvider>
   );

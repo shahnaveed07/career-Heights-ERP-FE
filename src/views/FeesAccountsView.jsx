@@ -16,7 +16,9 @@ import { generateNextTransactionRef } from '../utils/idGenerators';
 export const FeesAccountsView = () => {
   const { students, feeReceipts, recordFeePayment, branches } = useErpData();
   const { activeBranchFilter, setActiveBranchFilter, uiMode, can } = useAuth();
-  const canEditFees = uiMode !== 'view' && can('fees', 'edit');
+  const canCollectFee = uiMode !== 'view' && (can('fees', 'collect_payment') || can('fees', 'edit'));
+  const canSendReminders = uiMode !== 'view' && can('communication', 'add');
+  const canEditFees = canCollectFee;
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedBranch, setSelectedBranch] = useState(
     activeBranchFilter === 'all' ? 'all' : activeBranchFilter
@@ -173,16 +175,18 @@ export const FeesAccountsView = () => {
         </div>
 
         <div className="flex items-center gap-2">
-          <button
-            onClick={handleTriggerDueReminders}
-            className="flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-bold text-red-700 hover:bg-red-100 transition shadow-2xs"
-          >
-            <Send className="h-3.5 w-3.5" />
-            <span>
-              Remind Overdue (
-              {branchScopedStudents.filter((s) => s.feesOverdue > 0).length})
-            </span>
-          </button>
+          {canSendReminders && (
+            <button
+              onClick={handleTriggerDueReminders}
+              className="flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-bold text-red-700 hover:bg-red-100 transition shadow-2xs"
+            >
+              <Send className="h-3.5 w-3.5" />
+              <span>
+                Remind Overdue (
+                {branchScopedStudents.filter((s) => s.feesOverdue > 0).length})
+              </span>
+            </button>
+          )}
 
           {canEditFees ? (
             <button
@@ -404,13 +408,17 @@ export const FeesAccountsView = () => {
                             <CheckCircle2 className="h-3 w-3" />
                             Settled
                           </span>
-                        ) : (
+                        ) : canCollectFee ? (
                           <button
                             onClick={() => openRecordPaymentModal(student.id)}
                             className="rounded-lg bg-blue-900 px-2.5 py-1 text-xs font-bold text-white hover:bg-blue-800 transition shadow-2xs"
                           >
                             Collect Fee
                           </button>
+                        ) : (
+                          <span className="rounded bg-slate-100 border border-slate-200 px-2.5 py-1 text-[11px] font-medium text-slate-500">
+                            Due
+                          </span>
                         )}
                       </div>
                     </td>

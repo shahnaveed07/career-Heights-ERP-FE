@@ -11,13 +11,14 @@ import {
   FileText,
   Eye,
   Edit3,
+  Globe,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useErpData } from '../../context/ErpDataContext';
 import { StudentAvatar } from '../common/StudentAvatar';
 import { getUserAccessibleBranches } from '../../utils/permissionManager';
 
-export const Navbar = ({ onToggleSidebar, onSelectModule }) => {
+export const Navbar = ({ onToggleSidebar, onSelectModule, onGoToPublicWebsite }) => {
   const {
     currentUser,
     activeBranchFilter,
@@ -397,6 +398,18 @@ export const Navbar = ({ onToggleSidebar, onSelectModule }) => {
                 </div>
               </div>
               <div className="py-1">
+                {onGoToPublicWebsite && (
+                  <button
+                    onClick={() => {
+                      setShowUserMenu(false);
+                      onGoToPublicWebsite();
+                    }}
+                    className="flex w-full items-center gap-2 px-4 py-2 text-xs font-medium text-blue-900 hover:bg-blue-50"
+                  >
+                    <Globe className="h-4 w-4 text-blue-700" />
+                    <span>View Institute Website</span>
+                  </button>
+                )}
                 <button
                   onClick={() => {
                     setShowUserMenu(false);

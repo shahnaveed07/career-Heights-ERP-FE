@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Navbar } from './Navbar';
 import { Sidebar } from './Sidebar';
 import { useAuth } from '../../context/AuthContext';
-export const AppLayout = ({ activeModule, onSelectModule, children }) => {
+export const AppLayout = ({ activeModule, onSelectModule, onGoToPublicWebsite, children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { currentUser } = useAuth();
   return (
@@ -10,6 +10,7 @@ export const AppLayout = ({ activeModule, onSelectModule, children }) => {
       <Navbar
         onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
         onSelectModule={onSelectModule}
+        onGoToPublicWebsite={onGoToPublicWebsite}
       />
 
       <div className="flex flex-1 overflow-hidden">

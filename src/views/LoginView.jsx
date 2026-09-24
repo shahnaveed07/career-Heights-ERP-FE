@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import {
+  ArrowLeft,
   ArrowRight,
   Building2,
   CheckCircle2,
@@ -61,7 +62,7 @@ const DEMO_ACCOUNTS = [
   },
 ];
 
-export const LoginView = () => {
+export const LoginView = ({ onBackToHome }) => {
   const { login } = useAuth();
 
   const [email, setEmail] = useState("");
@@ -205,11 +206,24 @@ export const LoginView = () => {
 
                 {/* Heading */}
                 <div>
-                  <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5">
-                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                    <span className="text-[11px] font-semibold text-emerald-700">
-                      ERP DEMO ENVIRONMENT
-                    </span>
+                  {onBackToHome && (
+                    <button
+                      type="button"
+                      onClick={onBackToHome}
+                      className="mb-4 inline-flex items-center gap-1.5 text-xs font-semibold text-blue-900 hover:text-blue-700 transition"
+                    >
+                      <ArrowLeft className="h-3.5 w-3.5" />
+                      <span>&larr; Return to Institute Website</span>
+                    </button>
+                  )}
+
+                  <div className="mb-4 flex items-center gap-2">
+                    <div className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                      <span className="text-[11px] font-semibold text-emerald-700">
+                        ERP DEMO ENVIRONMENT
+                      </span>
+                    </div>
                   </div>
 
                   <h2 className="text-3xl font-bold tracking-tight text-slate-950">

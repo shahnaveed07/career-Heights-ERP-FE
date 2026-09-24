@@ -153,6 +153,10 @@ export const AcademicManagementView = () => {
   };
 
   const isViewOnly = uiMode === 'view' || !can('academic', 'edit');
+  const canAddAcademic = can('academic', 'add');
+  const canEditAcademic = can('academic', 'edit');
+  const canDeleteAcademic = can('academic', 'delete');
+  const canSolveDoubts = can('academic', 'solve_doubts') || can('academic', 'edit');
 
   return (
     <div className="space-y-6">
@@ -872,22 +876,27 @@ export const AcademicManagementView = () => {
                           </button>
                           <button
                             onClick={() => handleResolveSubmit(d.id)}
-                            className="rounded bg-emerald-600 px-3 py-1 font-bold text-white hover:bg-emerald-700"
+                            disabled={!canSolveDoubts}
+                            className="rounded bg-emerald-600 px-3 py-1 font-bold text-white hover:bg-emerald-700 disabled:opacity-50"
                           >
                             Post Solution
                           </button>
                         </div>
                       </div>
                     ) : (
-                      <button
-                        onClick={() => {
-                          setActiveAnswerDoubtId(d.id);
-                          setDoubtAnswerText('');
-                        }}
-                        className="rounded bg-slate-100 px-3 py-1 font-bold text-blue-900 hover:bg-blue-50"
-                      >
-                        Answer as Faculty &rarr;
-                      </button>
+                      canSolveDoubts ? (
+                        <button
+                          onClick={() => {
+                            setActiveAnswerDoubtId(d.id);
+                            setDoubtAnswerText('');
+                          }}
+                          className="rounded bg-slate-100 px-3 py-1 font-bold text-blue-900 hover:bg-blue-50"
+                        >
+                          Answer as Faculty &rarr;
+                        </button>
+                      ) : (
+                        <span className="text-[10px] text-slate-400">Resolution Pending</span>
+                      )
                     )}
                   </div>
                 )}
