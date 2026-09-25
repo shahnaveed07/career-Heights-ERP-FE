@@ -1,7 +1,9 @@
 import { useState } from 'react';
-import { Building, CheckCircle2, FileSpreadsheet } from 'lucide-react';
+import { Building, CheckCircle2, FileSpreadsheet, Download } from 'lucide-react';
 import { useErpData } from '../context/ErpDataContext';
 import { useAuth } from '../context/AuthContext';
+import { exportExecutiveDossierToCsv } from '../services/exportService';
+
 export const ReportsAnalyticsView = () => {
   const {
     branches,
@@ -36,10 +38,28 @@ export const ReportsAnalyticsView = () => {
       activeBranchFilter === 'all'
         ? 'All Campuses'
         : filteredBranches[0]?.name || 'Campus';
-    setDownloadSuccess(
-      `Consolidated Executive Dossier for ${branchName} compiled and exported.`
+    const result = exportExecutiveDossierToCsv(
+      filteredBranches,
+      filteredBranches.map((b) => ({
+        id: b.id,
+        totalStudents: b.studentCount || Math.round(filteredStudents.length / (filteredBranches.length || 1)),
+        totalEnquiries: Math.round(filteredEnquiries.length / (filteredBranches.length || 1)),
+        convertedAdmissions: Math.round(enrolledEnquiries / (filteredBranches.length || 1)),
+        feeCollected: b.monthlyRevenue ? b.monthlyRevenue * 10 : 0,
+        feePending: b.pendingRevenue || 0,
+        avgAttendance: 89,
+        staffCount: b.facultyCount || 8,
+      })),
+      branchName
     );
-    setTimeout(() => setDownloadSuccess(null), 4e3);
+    if (result.success) {
+      setDownloadSuccess(
+        `Demo executive dossier exported to CSV (client-side generated, ${result.rowCount} campus records).`
+      );
+    } else {
+      setDownloadSuccess('Export failed: ' + (result.error || 'Unknown error'));
+    }
+    setTimeout(() => setDownloadSuccess(null), 5000);
   };
   return (
     <div className="space-y-6">
@@ -65,7 +85,7 @@ export const ReportsAnalyticsView = () => {
           className="flex items-center gap-1.5 rounded-lg bg-blue-900 px-3.5 py-2 text-xs font-bold text-white hover:bg-blue-800 shadow-xs"
         >
           <FileSpreadsheet className="h-4 w-4" />
-          <span>Export Master Excel Dossier</span>
+          <span>Export CSV Report (Client-Side)</span>
         </button>
       </div>
 

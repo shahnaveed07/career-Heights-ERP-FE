@@ -10,7 +10,9 @@ import {
   INITIAL_TEACHER_ASSIGNMENTS,
   INITIAL_CUSTOM_ROLES,
   INITIAL_ENQUIRIES,
+  INITIAL_FEE_PAYMENTS,
   INITIAL_FEE_RECEIPTS,
+  INITIAL_SALARIES,
   INITIAL_TESTS,
   INITIAL_TEST_RESULTS,
   INITIAL_TIMETABLE,
@@ -25,15 +27,29 @@ import {
   INITIAL_CHTQ_SCHOOLS,
   INITIAL_CHTQ_CANDIDATES,
   INITIAL_AUDIT_LOGS,
+  INITIAL_TEACHER_ATTENDANCE,
+  INITIAL_PARENT_NOTIFICATIONS,
   VALID_STUDENT_AVATARS,
   generateInitialAttendanceRecords,
 } from '../data/mockData';
+import {
+  createAbsenceNotificationEvent,
+  createAttendanceNotificationEvent,
+  createPaymentConfirmationNotificationEvent,
+  createReceiptNotificationEvent,
+} from '../utils/parentNotificationEvents';
+import { buildAuditEvent } from '../services/auditService';
+import { buildNotificationEvent, NOTIFICATION_EVENTS } from '../services/notificationService';
 import { useAuth } from './AuthContext';
 import { getTodayDateString } from '../utils/dateUtils';
 import {
   generateNextStudentId,
   generateNextReceiptNo,
+  generateNextPaymentId,
+  generateNextTransactionRef,
+  isTransactionRefDuplicate,
 } from '../utils/idGenerators';
+import { INSTITUTE_CONFIG } from '../config/instituteConfig';
 import {
   calculateStudentAttendanceSummary,
   upsertAttendanceRecord,
@@ -43,6 +59,7 @@ import {
   getVisibleTeachers,
   getVisibleStaff,
   getVisibleFees,
+  getVisiblePayments,
   getVisibleAttendance,
   getVisibleBatches,
   getVisibleWings,
@@ -78,6 +95,7 @@ export const ErpDataProvider = ({ children }) => {
   const [batches] = useState(INITIAL_BATCHES);
   const [students, setStudents] = useState(INITIAL_STUDENTS);
   const [enquiries, setEnquiries] = useState(INITIAL_ENQUIRIES);
+  const [feePayments, setFeePayments] = useState(INITIAL_FEE_PAYMENTS);
   const [feeReceipts, setFeeReceipts] = useState(INITIAL_FEE_RECEIPTS);
   const [tests, setTests] = useState(INITIAL_TESTS);
   const [testResults, setTestResults] = useState(INITIAL_TEST_RESULTS);
@@ -108,56 +126,43 @@ export const ErpDataProvider = ({ children }) => {
       setCustomRolesRegistry(customRoles);
     }
   }, [customRoles, setCustomRolesRegistry]);
-  const [salaries, setSalaries] = useState(() => {
-    return INITIAL_STAFF.map((emp, idx) => ({
-      id: `sal-${emp.id}-2026-02`,
-      employeeId: emp.id,
-      employeeName: emp.name,
-      empCode: emp.empCode,
-      designation: emp.designation,
-      branchId: emp.branchId,
-      branchName: emp.branchName,
-      month: 'February 2026',
-      baseSalary: emp.salary || 65000,
-      allowance: 3500,
-      deductions: 1200,
-      netSalary: (emp.salary || 65000) + 3500 - 1200,
-      status: idx % 3 === 0 ? 'Pending' : 'Paid',
-      paidDate: idx % 3 === 0 ? null : '2026-02-28',
-      paymentMethod: idx % 3 === 0 ? null : 'Direct Bank Transfer',
-      transactionRef: idx % 3 === 0 ? null : `NEFT-2026-${1000 + idx}`,
-    }));
-  });
-  const [teacherAttendanceRecords, setTeacherAttendanceRecords] = useState([
-    {
-      id: 't-att-001',
-      teacherId: 'u-faculty',
-      teacherName: 'Dr. Rahul Sharma',
-      date: getTodayDateString(),
-      checkInTime: '08:45 AM',
-      checkOutTime: null,
-      status: 'Present',
-      location: 'Handwara Main Campus (34.3980° N, 74.2831° E)',
-      accuracyMeters: 12,
-      deviceInfo: 'Staff Mobile / Verified Campus GeoFence',
-    },
-  ]);
-  const addAuditLog = (action, module, details) => {
-    const newLog = {
-      id: `log-${Date.now()}`,
-      userId: currentUser?.id || 'sys',
-      userName: currentUser?.name || 'System User',
+  const [salaries, setSalaries] = useState(INITIAL_SALARIES);
+  const [teacherAttendanceRecords, setTeacherAttendanceRecords] = useState(INITIAL_TEACHER_ATTENDANCE);
+  const [parentNotifications, setParentNotifications] = useState(INITIAL_PARENT_NOTIFICATIONS);
+
+  const addParentNotification = (notifData) => {
+    const id = notifData.id || `pnotif-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+    const newNotif = {
+      id,
+      eventId: notifData.eventId || id,
+      timestamp: notifData.timestamp || new Date().toISOString(),
+      date: notifData.date || getTodayDateString(),
+      channel: 'in_app_dossier',
+      deliveryStatus: 'recorded_locally',
+      statusMessage: 'Demo action recorded locally.',
+      read: false,
+      ...notifData,
+    };
+    setParentNotifications((prev) => [newNotif, ...prev]);
+    return newNotif;
+  };
+  const addAuditLog = (action, module, details, meta = {}) => {
+    const newLog = buildAuditEvent({
+      actorId: currentUser?.id || 'sys',
+      actorName: currentUser?.name || 'System User',
       userRole: currentUser?.roleTitle || 'Authorized Staff',
       action,
       module,
       details,
-      timestamp: new Date().toLocaleString('en-US', {
-        dateStyle: 'short',
-        timeStyle: 'short',
-      }),
-      ip: 'Demo Environment',
-    };
+      targetEntity: meta.targetEntity || module || 'System',
+      targetId: meta.targetId || 'N/A',
+      oldValue: meta.oldValue !== undefined ? meta.oldValue : null,
+      newValue: meta.newValue !== undefined ? meta.newValue : null,
+      branchId: meta.branchId || currentUser?.branchId || 'b-hdw',
+      severity: meta.severity || 'info',
+    });
     setAuditLogs((prev) => [newLog, ...prev]);
+    return newLog;
   };
   const addStudent = (studentData) => {
     const { studentId, id, admissionNo } = generateNextStudentId(students);
@@ -233,23 +238,55 @@ export const ErpDataProvider = ({ children }) => {
     };
     setStudents((prev) => [newStudent, ...prev]);
     if (paid > 0) {
+      const initPayId = generateNextPaymentId(feePayments);
       const { receiptNo: initRcptNo, id: initRcptId } =
         generateNextReceiptNo(feeReceipts);
-      const initialReceipt = {
-        id: initRcptId,
-        receiptNo: initRcptNo,
+      const payMethod = studentData.paymentMethod || 'UPI';
+      const txnRef =
+        studentData.transactionRef ||
+        generateNextTransactionRef(payMethod, feePayments, feeReceipts);
+
+      const initialPayment = {
+        id: initPayId,
         studentId: newStudent.id,
         studentName: newStudent.name,
         studentCode: newStudent.studentId,
+        branchId: newStudent.branchId,
         branchName: newStudent.branchName,
         batchName: newStudent.batchName,
         amount: paid,
-        paymentMethod: 'UPI',
-        transactionRef: `INIT-ADM-${Date.now().toString().slice(-6)}`,
+        dateTime: new Date().toISOString(),
         date: admDate,
+        paymentMethod: payMethod,
+        transactionRef: txnRef,
+        installment: 'Admission & Term 1 Installment',
+        notes: 'Initial admission installment recorded upon enrollment.',
+        recordedBy: currentUser?.name || 'Accounts Desk',
+        status: 'Completed',
+        receiptId: initRcptId,
+      };
+
+      const initialReceipt = {
+        id: initRcptId,
+        receiptNo: initRcptNo,
+        paymentId: initPayId,
+        studentId: newStudent.id,
+        studentName: newStudent.name,
+        studentCode: newStudent.studentId,
+        branchId: newStudent.branchId,
+        branchName: newStudent.branchName,
+        batchName: newStudent.batchName,
+        amount: paid,
+        paymentMethod: payMethod,
+        transactionRef: txnRef,
+        installment: 'Admission & Term 1 Installment',
+        date: admDate,
+        dateTime: initialPayment.dateTime,
         receivedBy: currentUser?.name || 'Accounts Desk',
         notes: 'Initial admission installment recorded upon enrollment.',
       };
+
+      setFeePayments((prev) => [initialPayment, ...prev]);
       setFeeReceipts((prev) => [initialReceipt, ...prev]);
     }
     setAttendanceRecords((prev) => {
@@ -501,6 +538,20 @@ export const ErpDataProvider = ({ children }) => {
         markedBy: currentUser?.name || 'Faculty / Mentor',
       });
     });
+
+    // Enqueue parent notification event structure
+    if (status === 'absent') {
+      setParentNotifications((prev) => [
+        createAbsenceNotificationEvent({ student, date: dateStr, session: 'Morning Lecture' }),
+        ...prev,
+      ]);
+    } else if (status === 'present' || status === 'late') {
+      setParentNotifications((prev) => [
+        createAttendanceNotificationEvent({ student, date: dateStr, checkInTime: '08:30 AM', status }),
+        ...prev,
+      ]);
+    }
+
     setTimeout(() => {
       setAttendanceRecords((currentRecords) => {
         const summary = calculateStudentAttendanceSummary(
@@ -530,6 +581,80 @@ export const ErpDataProvider = ({ children }) => {
       `Marked ${student.name} as ${status.toUpperCase()} on ${dateStr}.`
     );
   };
+  const calculateStudentInstallments = (student, studentPayments = []) => {
+    if (!student) return [];
+    const total = student.feesTotal || 0;
+    const paid = student.feesPaid || 0;
+
+    // Standard 3-installment fee breakdown
+    const inst1Amount = Math.round(total * 0.4);
+    const inst2Amount = Math.round(total * 0.35);
+    const inst3Amount = Math.max(0, total - inst1Amount - inst2Amount);
+
+    const admissionYear = student.admissionDate ? new Date(student.admissionDate).getFullYear() : 2025;
+
+    const schedules = [
+      {
+        installmentNumber: 1,
+        name: 'Admission & Term 1 Installment',
+        amount: inst1Amount,
+        dueDate: `${admissionYear}-05-15`,
+      },
+      {
+        installmentNumber: 2,
+        name: 'Term 2 Mid-Session Installment',
+        amount: inst2Amount,
+        dueDate: `${admissionYear}-09-30`,
+      },
+      {
+        installmentNumber: 3,
+        name: 'Final Exam Preparation Installment',
+        amount: inst3Amount,
+        dueDate: `${admissionYear + 1}-01-15`,
+      },
+    ];
+
+    let cumulativePaid = paid;
+    return schedules.map((inst) => {
+      const paidForThis = Math.min(inst.amount, Math.max(0, cumulativePaid));
+      cumulativePaid -= paidForThis;
+      const remaining = inst.amount - paidForThis;
+      let status = 'Pending';
+      if (remaining === 0 && inst.amount > 0) {
+        status = 'Paid';
+      } else if (paidForThis > 0) {
+        status = 'Partial';
+      } else if (new Date(inst.dueDate) < new Date()) {
+        status = 'Overdue';
+      }
+
+      return {
+        ...inst,
+        paidAmount: paidForThis,
+        remainingAmount: remaining,
+        status,
+      };
+    });
+  };
+
+  const getStudentFeeDetails = (studentId) => {
+    const student = students.find((s) => s.id === studentId);
+    if (!student) return null;
+    const studentPayments = feePayments.filter((p) => p.studentId === studentId);
+    const studentReceipts = feeReceipts.filter((r) => r.studentId === studentId);
+    const installments = calculateStudentInstallments(student, studentPayments);
+    return {
+      student,
+      totalFee: student.feesTotal,
+      paid: student.feesPaid,
+      pending: student.feesPending,
+      overdue: student.feesOverdue,
+      installments,
+      payments: studentPayments,
+      receipts: studentReceipts,
+    };
+  };
+
   const recordFeePayment = (paymentData) => {
     const student = students.find((s) => s.id === paymentData.studentId);
     if (!student) {
@@ -540,38 +665,105 @@ export const ErpDataProvider = ({ children }) => {
         `Student ${student.name} has no outstanding balance (account is fully settled).`
       );
     }
-    if (paymentData.amount <= 0) {
+    const numAmount = Number(paymentData.amount);
+    if (isNaN(numAmount) || numAmount <= 0) {
       throw new Error('Payment amount must be greater than \u20B90.');
     }
-    if (paymentData.amount > student.feesPending) {
+    if (numAmount > student.feesPending) {
       throw new Error(
-        `Payment amount (\u20B9${paymentData.amount.toLocaleString()}) cannot exceed the outstanding balance of \u20B9${student.feesPending.toLocaleString()}.`
+        `Payment amount (\u20B9${numAmount.toLocaleString()}) cannot exceed the outstanding balance of \u20B9${student.feesPending.toLocaleString()}.`
       );
     }
+
+    // Branch scoping validation: Prevent payment against wrong branch if user is locked
+    if (
+      currentUser?.assignedBranchIds &&
+      !currentUser.assignedBranchIds.includes('all') &&
+      !currentUser.assignedBranchIds.includes(student.branchId)
+    ) {
+      throw new Error(
+        `Access Denied: You do not have permissions to collect fees for students in ${student.branchName} campus.`
+      );
+    }
+
+    // Prevent duplicate transaction references for electronic / cheque payment methods
+    const payMethod = paymentData.paymentMethod || 'UPI';
+    const txnRef =
+      (paymentData.transactionRef || '').trim() ||
+      generateNextTransactionRef(payMethod, feePayments, feeReceipts);
+    if (
+      payMethod !== 'Cash' &&
+      isTransactionRefDuplicate(txnRef, feePayments, feeReceipts)
+    ) {
+      throw new Error(
+        `Duplicate transaction reference "${txnRef}". This reference ID has already been recorded in the accounts ledger.`
+      );
+    }
+
+    const payId = generateNextPaymentId(feePayments);
     const { receiptNo, id: rcptId } = generateNextReceiptNo(feeReceipts);
-    const newReceipt = {
-      id: rcptId,
-      receiptNo,
+    const component =
+      paymentData.installment ||
+      paymentData.feeComponent ||
+      'Tuition Fee Installment';
+
+    const newPayment = {
+      id: payId,
       studentId: student.id,
       studentName: student.name,
-      studentCode: student.studentId,
+      studentCode: student.studentCode || student.studentId,
       branchId: student.branchId,
       branchName: student.branchName,
       batchName: student.batchName,
-      amount: paymentData.amount,
-      paymentMethod: paymentData.paymentMethod,
-      transactionRef: paymentData.transactionRef,
+      amount: numAmount,
+      dateTime: new Date().toISOString(),
       date: getTodayDateString(),
-      receivedBy: currentUser?.name || 'Imran Lone (Accounts)',
-      notes: paymentData.notes,
+      paymentMethod: payMethod,
+      transactionRef: txnRef,
+      installment: component,
+      feeComponent: component,
+      notes: paymentData.notes || '',
+      recordedBy: currentUser?.name || 'Imran Lone (Accounts)',
+      status: 'Completed',
+      receiptId: rcptId,
     };
+
+    const newReceipt = {
+      id: rcptId,
+      receiptNo,
+      paymentId: payId,
+      studentId: student.id,
+      studentName: student.name,
+      studentCode: student.studentCode || student.studentId,
+      branchId: student.branchId,
+      branchName: student.branchName,
+      batchName: student.batchName,
+      amount: numAmount,
+      paymentMethod: payMethod,
+      transactionRef: txnRef,
+      installment: component,
+      feeComponent: component,
+      date: getTodayDateString(),
+      dateTime: newPayment.dateTime,
+      receivedBy: currentUser?.name || 'Imran Lone (Accounts)',
+      notes: paymentData.notes || '',
+    };
+
+    // Atomic update of payments and receipts
+    setFeePayments((prev) => [newPayment, ...prev]);
     setFeeReceipts((prev) => [newReceipt, ...prev]);
+
+    // Enqueue payment & receipt parent notification event structures
+    const payEvent = createPaymentConfirmationNotificationEvent({ student, payment: newPayment });
+    const rcptEvent = createReceiptNotificationEvent({ student, receipt: newReceipt });
+    setParentNotifications((prev) => [rcptEvent, payEvent, ...prev]);
+
     setStudents((prev) =>
       prev.map((s) => {
         if (s.id === student.id) {
-          const newPaid = s.feesPaid + paymentData.amount;
+          const newPaid = s.feesPaid + numAmount;
           const newPending = Math.max(0, s.feesTotal - newPaid);
-          const newOverdue = Math.max(0, s.feesOverdue - paymentData.amount);
+          const newOverdue = Math.max(0, s.feesOverdue - numAmount);
           return {
             ...s,
             feesPaid: newPaid,
@@ -582,12 +774,17 @@ export const ErpDataProvider = ({ children }) => {
         return s;
       })
     );
+
     addAuditLog(
-      'Generated Official Fee Receipt',
+      'Recorded Fee Payment & Generated Receipt',
       'Fees & Accounts',
-      `Collected \u20B9${paymentData.amount.toLocaleString()} from ${student.name} (${student.studentId}) via ${paymentData.paymentMethod}. Receipt: ${receiptNo}`
+      `Collected \u20B9${numAmount.toLocaleString()} from ${student.name} (${student.studentId}) via ${payMethod}. Receipt: ${receiptNo}, Payment ID: ${payId}`
     );
-    return newReceipt;
+
+    return {
+      ...newReceipt,
+      payment: newPayment,
+    };
   };
   const addTest = (testData) => {
     const batch = batches.find((b) => b.id === testData.batchId) || batches[0];
@@ -852,9 +1049,14 @@ export const ErpDataProvider = ({ children }) => {
   };
   const sendBroadcastMessage = (data) => {
     addAuditLog(
-      `Dispatched ${data.channel.toUpperCase()} Notification`,
+      `Queued Demo Broadcast (${data.channel.toUpperCase()})`,
       'Communication Centre',
-      `Sent broadcast to target "${data.target}" using template "${data.template}": ${data.message.substring(0, 60)}...`
+      `Queued broadcast for "${data.target}" using template "${data.template}": ${data.message.substring(0, 60)}... (External telecom dispatch pending backend deployment)`,
+      {
+        targetEntity: 'BroadcastMessage',
+        targetId: data.template || 'N/A',
+        severity: 'info',
+      }
     );
   };
 
@@ -1100,8 +1302,9 @@ export const ErpDataProvider = ({ children }) => {
 
   const markTeacherSelfAttendance = (teacherId, data = {}) => {
     const today = getTodayDateString();
+    const now = new Date();
     const existing = teacherAttendanceRecords.find(
-      (r) => r.teacherId === teacherId && r.date === today
+      (r) => (r.teacherId === teacherId || r.teacherName === data.teacherName) && r.date === today
     );
     if (existing) {
       setTeacherAttendanceRecords((prev) =>
@@ -1109,28 +1312,49 @@ export const ErpDataProvider = ({ children }) => {
           r.id === existing.id
             ? {
                 ...r,
-                checkOutTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                checkOutTime: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                checkOutDateTime: now.toISOString(),
                 status: 'Present (Checked Out)',
+                checkOutLatitude: data.latitude !== undefined ? Number(data.latitude) : existing.latitude,
+                checkOutLongitude: data.longitude !== undefined ? Number(data.longitude) : existing.longitude,
+                checkOutAccuracy: data.accuracy !== undefined ? Number(data.accuracy) : existing.locationAccuracy,
+                deviceMetadata: data.deviceMetadata || existing.deviceMetadata,
+                updatedAt: now.toISOString(),
               }
             : r
         )
       );
       addAuditLog('Faculty Check-Out', 'Attendance System', `Faculty ${teacherId} clocked out.`);
     } else {
+      const lat = data.latitude !== undefined ? Number(data.latitude) : 34.3980;
+      const lon = data.longitude !== undefined ? Number(data.longitude) : 74.2831;
+      const acc = data.accuracy !== undefined ? Number(data.accuracy) : (data.locationAccuracy !== undefined ? Number(data.locationAccuracy) : 8.5);
       const newRec = {
         id: `t-att-${Date.now().toString(36)}`,
         teacherId,
-        teacherName: currentUser?.name || 'Dr. Rahul Sharma',
+        teacherName: data.teacherName || currentUser?.name || 'Dr. Rahul Sharma',
+        empCode: data.empCode || currentUser?.empCode || 'FAC-101',
+        branchId: data.branchId || currentUser?.branchId || 'b-hdw',
+        branchName: data.branchName || currentUser?.branchName || 'Handwara',
         date: today,
-        checkInTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        dateTime: now.toISOString(),
+        checkInTime: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         checkOutTime: null,
-        status: 'Present',
-        location: data.location || 'Handwara Main Campus (34.3980° N, 74.2831° E)',
-        accuracyMeters: data.accuracyMeters || 10,
-        deviceInfo: data.deviceInfo || 'Staff Device / Campus WiFi & GPS Verified',
+        status: data.status || 'Present',
+        latitude: lat,
+        longitude: lon,
+        locationAccuracy: acc,
+        accuracyMeters: acc,
+        location: data.location || `Captured GPS: ${lat.toFixed(4)}° N, ${lon.toFixed(4)}° E (±${Math.round(acc)}m)`,
+        locationName: data.locationName || 'Campus Environs',
+        deviceMetadata: data.deviceMetadata || (typeof navigator !== 'undefined' ? navigator.userAgent : 'Staff Device / Browser Environment'),
+        deviceInfo: data.deviceInfo || 'Staff Device / Real-time Geolocation Captured',
+        geofenceEnforced: false, // Critical: No geofence rejection rule
+        distanceVerificationStatus: 'Captured - No Geofence Rejection',
+        notes: data.notes || 'Teacher self-attendance logged with device & coordinate capture.',
       };
       setTeacherAttendanceRecords((prev) => [newRec, ...prev]);
-      addAuditLog('Faculty Self-Attendance', 'Attendance System', `Faculty ${teacherId} checked in at campus.`);
+      addAuditLog('Faculty Self-Attendance', 'Attendance System', `Faculty ${teacherId} recorded attendance. Lat: ${lat.toFixed(4)}, Lon: ${lon.toFixed(4)} (No geofence rule enforced).`);
     }
   };
 
@@ -1162,6 +1386,10 @@ export const ErpDataProvider = ({ children }) => {
   const scopedBatches = useMemo(
     () => getVisibleBatches(batches, currentActiveBranch),
     [batches, currentActiveBranch]
+  );
+  const scopedPayments = useMemo(
+    () => getVisiblePayments(feePayments, currentActiveBranch, students, branches),
+    [feePayments, currentActiveBranch, students, branches]
   );
   const scopedFees = useMemo(
     () => getVisibleFees(feeReceipts, currentActiveBranch, students, branches),
@@ -1244,6 +1472,8 @@ export const ErpDataProvider = ({ children }) => {
     getVisibleStaff(customList || employees, bId);
   const getVisibleFeesFn = (customList, bId = currentActiveBranch) =>
     getVisibleFees(customList || feeReceipts, bId, students, branches);
+  const getVisiblePaymentsFn = (customList, bId = currentActiveBranch) =>
+    getVisiblePayments(customList || feePayments, bId, students, branches);
   const getVisibleAttendanceFn = (customList, bId = currentActiveBranch) =>
     getVisibleAttendance(customList || attendanceRecords, bId, students);
   const getVisibleBatchesFn = (customList, bId = currentActiveBranch) =>
@@ -1274,6 +1504,7 @@ export const ErpDataProvider = ({ children }) => {
       value={{
         activeBranchId: currentActiveBranch,
         isAllBranches: isAllBranches(currentActiveBranch),
+        INSTITUTE_CONFIG,
         // Scoped Collections
         scopedStudents,
         visibleStudents: scopedStudents,
@@ -1285,6 +1516,8 @@ export const ErpDataProvider = ({ children }) => {
         visibleBatches: scopedBatches,
         scopedWings,
         visibleWings: scopedWings,
+        scopedPayments,
+        visiblePayments: scopedPayments,
         scopedFees,
         visibleFees: scopedFees,
         scopedAttendance,
@@ -1311,6 +1544,7 @@ export const ErpDataProvider = ({ children }) => {
         getVisibleStudents: getVisibleStudentsFn,
         getVisibleTeachers: getVisibleTeachersFn,
         getVisibleStaff: getVisibleStaffFn,
+        getVisiblePayments: getVisiblePaymentsFn,
         getVisibleFees: getVisibleFeesFn,
         getVisibleAttendance: getVisibleAttendanceFn,
         getVisibleBatches: getVisibleBatchesFn,
@@ -1318,6 +1552,8 @@ export const ErpDataProvider = ({ children }) => {
         getVisibleReports: getVisibleReportsFn,
         getVisibleEnquiries: getVisibleEnquiriesFn,
         getVisibleAssets: getVisibleAssetsFn,
+        calculateStudentInstallments,
+        getStudentFeeDetails,
         // Base Collections & Mutators
         branches,
         wings,
@@ -1331,6 +1567,7 @@ export const ErpDataProvider = ({ children }) => {
         salaries,
         teacherAttendanceRecords,
         enquiries,
+        feePayments,
         feeReceipts,
         tests,
         testResults,
@@ -1340,6 +1577,9 @@ export const ErpDataProvider = ({ children }) => {
         doubts,
         documents,
         notifications,
+        parentNotifications,
+        setParentNotifications,
+        addParentNotification,
         employees,
         leaveRequests,
         assets,

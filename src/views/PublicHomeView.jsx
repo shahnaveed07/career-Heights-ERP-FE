@@ -23,6 +23,7 @@ import {
   Layers,
 } from 'lucide-react';
 import { useErpData } from '../context/ErpDataContext';
+import { INSTITUTE_CONFIG } from '../config/instituteConfig';
 import { PublicNavbar } from '../components/layout/PublicNavbar';
 import { PublicFooter } from '../components/layout/PublicFooter';
 
@@ -1146,9 +1147,9 @@ export const PublicHomeView = ({ onOpenLogin, onSelectPublicPage, initialPage = 
                     <div className="flex items-start gap-3 text-slate-700">
                       <MapPin className="h-4 w-4 text-blue-900 shrink-0 mt-0.5" />
                       <div>
-                        <strong>Handwara Central Campus</strong>
+                        <strong>{INSTITUTE_CONFIG.headOffice.title}</strong>
                         <p className="text-slate-500 text-[11px]">
-                          Campus Tower, Main Chowk, Handwara, J&amp;K
+                          {INSTITUTE_CONFIG.headOffice.address}
                         </p>
                       </div>
                     </div>
@@ -1156,9 +1157,9 @@ export const PublicHomeView = ({ onOpenLogin, onSelectPublicPage, initialPage = 
                     <div className="flex items-center gap-3 text-slate-700">
                       <Phone className="h-4 w-4 text-blue-900 shrink-0" />
                       <div>
-                        <strong>Helpline: +91 94190 12001</strong>
+                        <strong>Helpline: {INSTITUTE_CONFIG.headOffice.phone}</strong>
                         <p className="text-slate-500 text-[11px]">
-                          Monday to Saturday, 08:30 AM to 05:00 PM
+                          {INSTITUTE_CONFIG.headOffice.operatingHours}
                         </p>
                       </div>
                     </div>
@@ -1166,7 +1167,7 @@ export const PublicHomeView = ({ onOpenLogin, onSelectPublicPage, initialPage = 
                     <div className="flex items-center gap-3 text-slate-700">
                       <Mail className="h-4 w-4 text-blue-900 shrink-0" />
                       <div>
-                        <strong>Email: contact@careerheights.demo</strong>
+                        <strong>Email: {INSTITUTE_CONFIG.headOffice.email}</strong>
                       </div>
                     </div>
                   </div>
@@ -1192,10 +1193,10 @@ export const PublicHomeView = ({ onOpenLogin, onSelectPublicPage, initialPage = 
                     <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-6 text-center space-y-2">
                       <CheckCircle2 className="h-8 w-8 text-emerald-600 mx-auto" />
                       <h4 className="text-sm font-bold text-emerald-950">
-                        Enquiry Submitted Successfully
+                        Enquiry Recorded Locally (Demo)
                       </h4>
                       <p className="text-xs text-emerald-800">
-                        Thank you for your interest. A Career Heights academic counselor will call your provided number shortly.
+                        Thank you for your interest. Candidate enquiry has been stored in local state for counselor review.
                       </p>
                     </div>
                   ) : (

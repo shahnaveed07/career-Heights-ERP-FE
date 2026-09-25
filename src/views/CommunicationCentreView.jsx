@@ -93,13 +93,13 @@ export const CommunicationCentreView = () => {
       template: templateName,
       timestamp: 'Just now',
       recipientsCount: targetAudience === 'all_parents' ? scopedStudents.length : Math.min(45, scopedStudents.length),
-      deliveryRate: '100% (Queued)',
+      deliveryRate: 'Recorded Locally (Demo)',
     };
     setBroadcastHistory([newRecord, ...broadcastHistory]);
     setBroadcastSentNotification(
-      `Broadcast successfully queued across official SMS Gateway & WhatsApp API for delivery.`
+      'Demo action recorded locally: Broadcast queued in demonstration state. External SMS & WhatsApp gateways are not active in prototype.'
     );
-    setTimeout(() => setBroadcastSentNotification(null), 4e3);
+    setTimeout(() => setBroadcastSentNotification(null), 5e3);
   };
   return (
     <div className="space-y-6">
@@ -301,22 +301,21 @@ export const CommunicationCentreView = () => {
               <div className="rounded-2xl bg-slate-100 p-3 min-h-[300px] flex flex-col justify-between text-[11px]">
                 <div className="space-y-2">
                   <div className="text-center text-[10px] text-slate-400 font-semibold">
-                    Today • Carrier SMS
+                    Template Format Preview (Demo)
                   </div>
                   <div className="bg-white p-3 rounded-xl rounded-tl-none shadow-xs border border-slate-200 text-slate-800 leading-snug">
                     <p className="font-bold text-blue-900 text-[10px] mb-1">
-                      CAREER HEIGHTS HQ
+                      CAREER HEIGHTS
                     </p>
                     <p>{messageContent}</p>
                     <span className="text-[9px] text-slate-400 mt-1 block text-right">
-                      09:42 AM • Delivered
+                      Local Preview
                     </span>
                   </div>
                 </div>
 
                 <div className="text-center text-[9px] text-slate-400">
-                  Secured by Career Heights DLT Header:{' '}
-                  <strong className="text-slate-600">CRHTS-J&amp;K</strong>
+                  Demo template representation (External carrier gateways pending backend deployment).
                 </div>
               </div>
             </div>
@@ -329,11 +328,10 @@ export const CommunicationCentreView = () => {
         <div className="rounded-xl border border-slate-200 bg-white shadow-xs overflow-hidden">
           <div className="p-4 border-b border-slate-200 bg-slate-50/70">
             <h3 className="text-sm font-bold text-slate-900">
-              Broadcast Dispatch Ledger &amp; Delivery Receipts
+              Demo Broadcast Dispatch Ledger
             </h3>
             <p className="text-xs text-slate-500">
-              Telecom delivery status acknowledgments from SMS and WhatsApp
-              providers.
+              Local broadcast event queue (External SMS and WhatsApp carrier delivery adapters staged for future backend deployment).
             </p>
           </div>
 

@@ -11,6 +11,7 @@ import {
   Users,
 } from 'lucide-react';
 import { PUBLIC_NAV_ITEMS } from '../../data/publicNavItems';
+import { INSTITUTE_CONFIG } from '../../config/instituteConfig';
 
 export const PublicFooter = ({ onNavigate, onOpenLogin, branches = [] }) => {
   return (
@@ -77,15 +78,15 @@ export const PublicFooter = ({ onNavigate, onOpenLogin, branches = [] }) => {
             <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-3.5 space-y-1.5 text-xs">
               <div className="flex items-center gap-2 text-slate-300">
                 <MapPin className="h-4 w-4 text-blue-400 shrink-0" />
-                <span>Head Office: Campus Tower, Main Chowk, Handwara, J&amp;K</span>
+                <span>Head Office: {INSTITUTE_CONFIG.headOffice.address}</span>
               </div>
               <div className="flex items-center gap-2 text-slate-300">
                 <Phone className="h-4 w-4 text-blue-400 shrink-0" />
-                <span>Phone: +91 94190 12001 / +91 94190 12002</span>
+                <span>Phone: {INSTITUTE_CONFIG.headOffice.phone} / {INSTITUTE_CONFIG.headOffice.alternatePhone}</span>
               </div>
               <div className="flex items-center gap-2 text-slate-300">
                 <Mail className="h-4 w-4 text-blue-400 shrink-0" />
-                <span>Email: contact@careerheights.demo</span>
+                <span>Email: {INSTITUTE_CONFIG.headOffice.email}</span>
               </div>
             </div>
           </div>
@@ -179,8 +180,7 @@ export const PublicFooter = ({ onNavigate, onOpenLogin, branches = [] }) => {
         {/* Lower footer copyright */}
         <div className="mt-12 border-t border-slate-800/80 pt-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
           <p>
-            &copy; {new Date().getFullYear()} Career Heights Coaching Classes.
-            All rights reserved. (Jammu &amp; Kashmir).
+            {INSTITUTE_CONFIG.officialText.copyright}
           </p>
           <div className="flex items-center gap-4 text-[11px]">
             <span className="text-slate-400 font-medium">

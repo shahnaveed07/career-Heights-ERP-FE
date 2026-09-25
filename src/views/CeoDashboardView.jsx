@@ -308,7 +308,7 @@ export const CeoDashboardView = ({
             </div>
             <p className="mt-1 text-[10px] text-slate-400">
               {todayReceipts.length > 0
-                ? `${todayReceipts.length} official receipt${todayReceipts.length === 1 ? '' : 's'} issued`
+                ? `${todayReceipts.length} receipt${todayReceipts.length === 1 ? '' : 's'} issued`
                 : 'No receipts logged today'}
             </p>
           </div>

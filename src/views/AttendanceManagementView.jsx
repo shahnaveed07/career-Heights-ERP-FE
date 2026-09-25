@@ -4,6 +4,8 @@ import { useErpData } from '../context/ErpDataContext';
 import { useAuth } from '../context/AuthContext';
 import { getTodayDateString } from '../utils/dateUtils';
 import { StudentAvatar } from '../components/common/StudentAvatar';
+import { createAbsenceNotificationEvent } from '../utils/parentNotificationEvents';
+
 export const AttendanceManagementView = () => {
   const {
     students,
@@ -16,6 +18,8 @@ export const AttendanceManagementView = () => {
     scopedBatches,
     scopedStudents,
     scopedStaff,
+    teacherAttendanceRecords,
+    addParentNotification,
   } = useErpData();
   const { activeBranchFilter } = useAuth();
   const [activeTab, setActiveTab] = useState('students');
@@ -65,8 +69,19 @@ export const AttendanceManagementView = () => {
     const absentees = batchStudents.filter(
       (s) => getStudentStatus(s.id) === 'absent'
     );
+    // Queue actual local notification events for parent dossiers
+    absentees.forEach((st) => {
+      addParentNotification(
+        createAbsenceNotificationEvent({
+          student: st,
+          date: selectedDate,
+          session: 'Daily Roll-Call',
+          reason: 'Marked absent during attendance register check',
+        })
+      );
+    });
     setAlertSentMessage(
-      `Automated SMS & WhatsApp absence alerts dispatched to parents of ${absentees.length} students in ${activeBatch?.name || 'batch'}.`
+      `Demo action recorded locally: ${absentees.length} absence notification event(s) queued for parent dossiers. (External SMS & WhatsApp gateways are not active in prototype).`
     );
     setTimeout(() => setAlertSentMessage(null), 5e3);
   };
@@ -322,50 +337,80 @@ export const AttendanceManagementView = () => {
                   <th className="py-3 px-4 text-left">Campus Branch</th>
                   <th className="py-3 px-4 text-center">Punch In</th>
                   <th className="py-3 px-4 text-center">Punch Out</th>
-                  <th className="py-3 px-4 text-center">Biometric Status</th>
+                  <th className="py-3 px-4 text-left">Location / Coordinates</th>
+                  <th className="py-3 px-4 text-center">Status</th>
                   <th className="py-3 px-4 text-right">Attendance %</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {filteredEmployees.map((emp) => (
-                  <tr key={emp.id} className="hover:bg-slate-50 transition">
-                    <td className="py-3 px-4">
-                      <div className="flex items-center gap-2">
-                        <StudentAvatar
-                          photo={emp.photo}
-                          name={emp.name}
-                          size="sm"
-                        />
-                        <div>
-                          <p className="font-bold text-slate-900">{emp.name}</p>
-                          <p className="text-[10px] text-slate-400">
-                            {emp.phone}
-                          </p>
+                {filteredEmployees.map((emp) => {
+                  const empRec = (teacherAttendanceRecords || []).find(
+                    (r) =>
+                      (r.teacherId === emp.id ||
+                        r.teacherId === emp.empCode ||
+                        r.teacherName?.toLowerCase() === emp.name?.toLowerCase()) &&
+                      r.date === selectedDate
+                  );
+                  return (
+                    <tr key={emp.id} className="hover:bg-slate-50 transition">
+                      <td className="py-3 px-4">
+                        <div className="flex items-center gap-2">
+                          <StudentAvatar
+                            photo={emp.photo}
+                            name={emp.name}
+                            size="sm"
+                          />
+                          <div>
+                            <p className="font-bold text-slate-900">{emp.name}</p>
+                            <p className="text-[10px] text-slate-400">
+                              {emp.phone}
+                            </p>
+                          </div>
                         </div>
-                      </div>
-                    </td>
-                    <td className="py-3 px-4 font-semibold text-slate-700">
-                      {emp.designation}
-                    </td>
-                    <td className="py-3 px-4 text-slate-600">
-                      {emp.branchName}
-                    </td>
-                    <td className="py-3 px-4 text-center font-mono font-medium text-slate-800">
-                      08:52 AM
-                    </td>
-                    <td className="py-3 px-4 text-center font-mono font-medium text-slate-500">
-                      In Campus
-                    </td>
-                    <td className="py-3 px-4 text-center">
-                      <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800">
-                        Present
-                      </span>
-                    </td>
-                    <td className="py-3 px-4 text-right font-black text-slate-900">
-                      {emp.attendanceRate}%
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                      <td className="py-3 px-4 font-semibold text-slate-700">
+                        {emp.designation}
+                      </td>
+                      <td className="py-3 px-4 text-slate-600">
+                        {emp.branchName}
+                      </td>
+                      <td className="py-3 px-4 text-center font-mono font-medium text-slate-800">
+                        {empRec ? empRec.checkInTime : '—'}
+                      </td>
+                      <td className="py-3 px-4 text-center font-mono font-medium text-slate-500">
+                        {empRec?.checkOutTime ? empRec.checkOutTime : empRec ? 'In Campus' : '—'}
+                      </td>
+                      <td className="py-3 px-4 font-mono text-[11px] text-slate-600">
+                        {empRec?.latitude ? (
+                          <div>
+                            <span className="font-semibold text-slate-800">
+                              {empRec.latitude.toFixed(4)}°, {empRec.longitude.toFixed(4)}°
+                            </span>
+                            <span className="text-[10px] text-slate-400 ml-1">
+                              (±{Math.round(empRec.locationAccuracy || empRec.accuracyMeters || 10)}m)
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="text-slate-400 italic">No GPS log</span>
+                        )}
+                      </td>
+                      <td className="py-3 px-4 text-center">
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                            empRec
+                              ? 'bg-emerald-100 text-emerald-800'
+                              : 'bg-slate-100 text-slate-600'
+                          }`}
+                        >
+                          {empRec ? empRec.status : 'Pending'}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 text-right font-black text-slate-900">
+                        {emp.attendanceRate}%
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -383,10 +428,8 @@ export const AttendanceManagementView = () => {
               </span>
             </div>
             <p className="mt-1 text-xs text-red-700">
-              Students falling below the 75% attendance threshold are
-              algorithmically barred from official Career Heights Hall Tickets
-              and CHTQ scholarships unless an approved medical waiver is
-              recorded.
+              Students falling below the 75% attendance threshold require academic
+              review and guardian consultation before examination hall ticket issuance.
             </p>
           </div>
 
@@ -430,8 +473,16 @@ export const AttendanceManagementView = () => {
                     <td className="py-3 px-4 text-right">
                       <button
                         onClick={() => {
+                          addParentNotification({
+                            event: 'GUARDIAN_SUMMONS',
+                            title: 'Guardian Meeting Summons',
+                            studentId: student.id,
+                            studentName: student.name,
+                            message: `Guardian summons requested for ${student.name} due to critical attendance (${student.attendanceRate}%).`,
+                            severity: 'urgent',
+                          });
                           setAlertSentMessage(
-                            `Parent meeting summons letter generated for ${student.name} (${student.parentPhone})`
+                            `Demo action recorded locally: Guardian summons request logged for ${student.name}.`
                           );
                           setTimeout(() => setAlertSentMessage(null), 5e3);
                         }}

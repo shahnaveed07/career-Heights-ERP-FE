@@ -1,29 +1,43 @@
 import { useState } from 'react';
-import { ShieldAlert, Search, CheckCircle2 } from 'lucide-react';
+import { ShieldAlert, Search, CheckCircle2, Download } from 'lucide-react';
 import { useErpData } from '../context/ErpDataContext';
+import { exportAuditLogsToCsv } from '../services/exportService';
+
 export const AuditLogsView = () => {
   const { auditLogs } = useErpData();
   const [searchTerm, setSearchTerm] = useState('');
   const [severityFilter, setSeverityFilter] = useState('all');
   const [exportNotice, setExportNotice] = useState(null);
+
   const filteredLogs = auditLogs.filter((log) => {
-    const userStr = log.user || log.userName || '';
+    const userStr = log.user || log.userName || log.actorName || '';
     const severity = log.severity || 'info';
+    const actionStr = log.action || '';
+    const detailsStr = log.details || '';
+    const moduleStr = log.module || '';
     const searchMatch =
       !searchTerm ||
       userStr.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      log.action.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      log.details.toLowerCase().includes(searchTerm.toLowerCase());
+      actionStr.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      moduleStr.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      detailsStr.toLowerCase().includes(searchTerm.toLowerCase());
     const severityMatch =
       severityFilter === 'all' || severity === severityFilter;
     return searchMatch && severityMatch;
   });
+
   const handleExport = () => {
-    setExportNotice(
-      'Official system security and audit trail log exported successfully.'
-    );
-    setTimeout(() => setExportNotice(null), 4e3);
+    const result = exportAuditLogsToCsv(filteredLogs);
+    if (result.success) {
+      setExportNotice(
+        `Demo audit logs exported to CSV (client-side generated, ${result.rowCount} records).`
+      );
+    } else {
+      setExportNotice('Demo audit export failed: ' + (result.error || 'Unknown error'));
+    }
+    setTimeout(() => setExportNotice(null), 5000);
   };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -31,23 +45,24 @@ export const AuditLogsView = () => {
         <div>
           <div className="flex items-center gap-2">
             <span className="rounded bg-slate-200 px-2 py-0.5 text-[10px] font-bold text-slate-800 uppercase tracking-wider">
-              Compliance &amp; Security
+              Demo Audit Trail
             </span>
           </div>
           <h1 className="mt-1 text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-            System Security &amp; Audit Trail
+            Demo Audit Trail &amp; Event Logs
           </h1>
           <p className="mt-0.5 text-xs text-slate-500">
-            Immutable system logs capturing transactions, fee edits, role
-            changes, and auth timestamps.
+            System audit records capturing transactions, fee edits, role changes, and auth timestamps.
+            (Logged in local prototype state; backend persistence staged for server deployment).
           </p>
         </div>
 
         <button
           onClick={handleExport}
-          className="rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 shadow-2xs"
+          className="flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 shadow-2xs"
         >
-          Export CSV Log
+          <Download className="h-3.5 w-3.5 text-slate-600" />
+          <span>Export CSV Log</span>
         </button>
       </div>
 
@@ -66,7 +81,7 @@ export const AuditLogsView = () => {
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search by action, user email, details..."
+            placeholder="Search by action, user email, module, details..."
             className="w-full rounded-lg border border-slate-200 pl-8 pr-3 py-1.5 text-xs text-slate-900 focus:outline-hidden"
           />
         </div>
@@ -91,8 +106,8 @@ export const AuditLogsView = () => {
               <th className="py-3 px-4 text-left">Timestamp</th>
               <th className="py-3 px-4 text-left">Operator User</th>
               <th className="py-3 px-4 text-left">Action Triggered</th>
+              <th className="py-3 px-4 text-left">Module / Entity</th>
               <th className="py-3 px-4 text-left">Audit Description</th>
-              <th className="py-3 px-4 text-left">Environment</th>
               <th className="py-3 px-4 text-center">Severity</th>
             </tr>
           </thead>
@@ -114,18 +129,26 @@ export const AuditLogsView = () => {
                     {log.timestamp}
                   </td>
                   <td className="py-2.5 px-4 font-bold text-slate-900 whitespace-nowrap">
-                    {log.user || log.userName}
+                    {log.user || log.userName || log.actorName}
+                    {log.userRole && (
+                      <span className="block text-[10px] font-normal text-slate-500 font-sans">
+                        {log.userRole}
+                      </span>
+                    )}
                   </td>
                   <td className="py-2.5 px-4 font-bold text-blue-900 whitespace-nowrap">
                     {log.action}
                   </td>
+                  <td className="py-2.5 px-4 font-sans text-slate-600 whitespace-nowrap">
+                    <span className="font-semibold text-slate-800">{log.module}</span>
+                    {log.targetEntity && (
+                      <span className="block text-[10px] text-slate-400">
+                        {log.targetEntity} #{log.targetId || 'N/A'}
+                      </span>
+                    )}
+                  </td>
                   <td className="py-2.5 px-4 font-sans text-slate-700 max-w-sm">
                     {log.details}
-                  </td>
-                  <td className="py-2.5 px-4 text-slate-500 font-sans">
-                    <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-600">
-                      Demo Environment
-                    </span>
                   </td>
                   <td className="py-2.5 px-4 text-center">
                     <span

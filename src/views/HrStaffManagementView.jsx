@@ -194,7 +194,7 @@ export const HrStaffManagementView = () => {
     });
 
     setShowAddStaffModal(false);
-    showNotification(`Successfully enrolled staff member ${created.name} (${created.empCode}).`);
+    showNotification(`Staff member ${created.name} (${created.empCode}) enrolled in local staff roster.`);
     setStaffForm({
       name: '',
       email: '',
@@ -224,7 +224,7 @@ export const HrStaffManagementView = () => {
     const res = transferEmployee(selectedStaffForAction.id, targetBranchId);
     if (res.success) {
       const targetB = branches.find((b) => b.id === targetBranchId);
-      showNotification(`Successfully transferred ${selectedStaffForAction.name} to ${targetB?.name} Campus.`);
+      showNotification(`Transferred ${selectedStaffForAction.name} to ${targetB?.name} Campus (local state updated).`);
       setShowTransferModal(false);
       setSelectedStaffForAction(null);
     } else {

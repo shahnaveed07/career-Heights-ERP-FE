@@ -104,6 +104,18 @@ export function getVisibleFees(
 }
 
 /**
+ * Filter fee payments by active branch.
+ */
+export function getVisiblePayments(
+  feePayments = [],
+  activeBranchId = 'all',
+  students = [],
+  branches = []
+) {
+  return getVisibleFees(feePayments, activeBranchId, students, branches);
+}
+
+/**
  * Filter attendance records by active branch.
  */
 export function getVisibleAttendance(

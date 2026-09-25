@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { HelpCircle, ArrowLeft, Home, GraduationCap } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { getDefaultRouteForRole, ROUTES } from '../routes/routeConfig';
+import { INSTITUTE_CONFIG } from '../config/instituteConfig';
 
 export const NotFoundView = () => {
   const navigate = useNavigate();
@@ -85,7 +86,7 @@ export const NotFoundView = () => {
 
       {/* Footer */}
       <footer className="border-t border-slate-200 bg-white py-4 text-center text-xs text-slate-400">
-        Career Heights Educational Institute &amp; Regional Coaching Centers · Handwara HQ
+        {INSTITUTE_CONFIG.name} · {INSTITUTE_CONFIG.headOffice.shortTitle}
       </footer>
     </div>
   );

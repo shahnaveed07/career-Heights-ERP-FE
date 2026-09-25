@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import {
   Users,
   CreditCard,
@@ -35,6 +36,29 @@ export const Sidebar = ({
   const navigate = useNavigate();
   const location = useLocation();
 
+  // Mobile body scroll lock and restore
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isOpen]);
+
+  // Handle escape key to close mobile sidebar
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && isOpen) {
+        onClose?.();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
   // Navigation sections with centralized permission requirements and URL paths
   const navigationSections = [
     {
@@ -42,7 +66,7 @@ export const Sidebar = ({
       items: [
         {
           id: 'ceo_dashboard',
-          label: 'Executive Command Console',
+          label: 'Dashboard',
           icon: ShieldCheck,
           module: 'ceo_dashboard',
           action: 'view',
@@ -58,7 +82,7 @@ export const Sidebar = ({
         },
         {
           id: 'parent_portal',
-          label: 'Parent / Guardian Portal',
+          label: 'Parent Portal',
           icon: HeartHandshake,
           module: 'parent_portal',
           action: 'view',
@@ -79,7 +103,7 @@ export const Sidebar = ({
       items: [
         {
           id: 'students',
-          label: 'Student Directory & Records',
+          label: 'Students',
           icon: Users,
           module: 'students',
           action: 'view',
@@ -87,7 +111,7 @@ export const Sidebar = ({
         },
         {
           id: 'admissions_crm',
-          label: 'Admissions & CRM Inquiries',
+          label: 'Admissions CRM',
           icon: UserCheck,
           module: 'admissions_crm',
           action: 'view',
@@ -95,7 +119,7 @@ export const Sidebar = ({
         },
         {
           id: 'attendance',
-          label: 'Attendance & Biometrics',
+          label: 'Attendance',
           icon: CalendarCheck,
           module: 'attendance',
           action: 'view',
@@ -103,7 +127,7 @@ export const Sidebar = ({
         },
         {
           id: 'academic',
-          label: 'Academic Master & Batches',
+          label: 'Academics & Batches',
           icon: BookOpen,
           module: 'academic',
           action: 'view',
@@ -111,7 +135,7 @@ export const Sidebar = ({
         },
         {
           id: 'examination',
-          label: 'Examinations & OMR Evaluator',
+          label: 'Exams & OMR',
           icon: Award,
           module: 'examination',
           action: 'view',
@@ -119,7 +143,7 @@ export const Sidebar = ({
         },
         {
           id: 'chtq_scholarship',
-          label: 'CHTQ Talent Scholarship',
+          label: 'CHTQ Scholarship',
           icon: GraduationCap,
           module: 'chtq_scholarship',
           action: 'view',
@@ -132,7 +156,7 @@ export const Sidebar = ({
       items: [
         {
           id: 'fees',
-          label: 'Fees & Accounts Ledger',
+          label: 'Fees & Accounts',
           icon: CreditCard,
           module: 'fees',
           action: 'view',
@@ -140,7 +164,7 @@ export const Sidebar = ({
         },
         {
           id: 'reports',
-          label: 'Financial & Academic Reports',
+          label: 'Reports & Analytics',
           icon: BarChart3,
           module: 'reports',
           action: 'view',
@@ -148,7 +172,7 @@ export const Sidebar = ({
         },
         {
           id: 'branch_management',
-          label: 'Campus Infrastructure',
+          label: 'Branches',
           icon: Building,
           module: 'branches',
           action: 'view',
@@ -156,7 +180,7 @@ export const Sidebar = ({
         },
         {
           id: 'hr_staff',
-          label: 'HR & Staff Directory',
+          label: 'Staff Management',
           icon: UserCheck,
           module: 'hr_staff',
           action: 'view',
@@ -169,7 +193,7 @@ export const Sidebar = ({
       items: [
         {
           id: 'documents',
-          label: 'Institutional Document Vault',
+          label: 'Document Vault',
           icon: FileSpreadsheet,
           module: 'documents',
           action: 'view',
@@ -177,7 +201,7 @@ export const Sidebar = ({
         },
         {
           id: 'communication',
-          label: 'SMS & WhatsApp Broadcasts',
+          label: 'Communications',
           icon: MessageSquare,
           module: 'communication',
           action: 'view',
@@ -185,7 +209,7 @@ export const Sidebar = ({
         },
         {
           id: 'inventory',
-          label: 'Campus Assets & Books',
+          label: 'Inventory & Assets',
           icon: Package,
           module: 'inventory',
           action: 'view',
@@ -193,7 +217,7 @@ export const Sidebar = ({
         },
         {
           id: 'audit_logs',
-          label: 'Security & Audit Trail',
+          label: 'Demo Audit Trail',
           icon: ShieldAlert,
           module: 'audit_logs',
           action: 'view',

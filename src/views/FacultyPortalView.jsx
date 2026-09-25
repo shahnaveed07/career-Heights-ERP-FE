@@ -101,6 +101,9 @@ export const FacultyPortalView = () => {
   const canSolveDoubts = can('academic', 'solve_doubts') || can('academic', 'edit');
   const canUploadMaterials = can('academic', 'add') || can('academic', 'edit');
 
+  const [gpsLoading, setGpsLoading] = useState(false);
+  const [gpsStatusMessage, setGpsStatusMessage] = useState(null);
+
   const handleResolveDoubt = (id) => {
     if (!answerText.trim() || !canSolveDoubts) return;
     answerDoubt(id, answerText);
@@ -109,26 +112,96 @@ export const FacultyPortalView = () => {
   };
 
   const handleSelfPunchIn = () => {
-    markTeacherSelfAttendance(currentUser?.id || 'u-faculty', {
-      location: 'Handwara Main Campus (34.3980° N, 74.2831° E)',
-      accuracyMeters: 8,
-      deviceInfo: 'Biometric / Campus GeoFence Verified',
-    });
+    setGpsLoading(true);
+    setGpsStatusMessage('Capturing location and device metadata...');
+
+    const submitSelfAttendance = (coords, accuracy, sourceNotes) => {
+      const teacherId = currentUser?.id || facultyProfile?.id || 'u-faculty';
+      const teacherName = currentUser?.name || facultyProfile?.name || 'Dr. Rahul Sharma';
+      const lat = coords?.latitude ?? 34.3980;
+      const lon = coords?.longitude ?? 74.2831;
+      const acc = accuracy ?? 8.5;
+
+      const deviceMeta = typeof navigator !== 'undefined'
+        ? `${navigator.userAgent || 'Web Browser'} (${navigator.platform || 'Device'})`
+        : 'Faculty Authorized Terminal';
+
+      markTeacherSelfAttendance(teacherId, {
+        teacherName,
+        empCode: facultyProfile?.empCode || 'FAC-101',
+        branchId: currentUser?.branchId || facultyProfile?.branchId || 'b-hdw',
+        branchName: currentUser?.branchName || facultyProfile?.branchName || 'Handwara',
+        latitude: lat,
+        longitude: lon,
+        accuracy: acc,
+        location: `Lat: ${lat.toFixed(4)}°, Lon: ${lon.toFixed(4)}° (±${Math.round(acc)}m)`,
+        locationName: currentUser?.branchName ? `${currentUser.branchName} Campus Area` : 'Handwara Main Campus',
+        deviceMetadata: deviceMeta,
+        deviceInfo: `${sourceNotes} | Coordinates Captured`,
+        notes: 'Demo action recorded locally: Attendance recorded without geofence distance restrictions.',
+      });
+
+      setGpsLoading(false);
+      setGpsStatusMessage(
+        myTodayAttendance
+          ? 'Check-out completed! Location & timestamp recorded.'
+          : 'Check-in recorded! Coordinates logged (no geofence rejection rule applied).'
+      );
+      setTimeout(() => setGpsStatusMessage(null), 5000);
+    };
+
+    if (typeof navigator !== 'undefined' && navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          submitSelfAttendance(pos.coords, pos.coords.accuracy, 'Live GPS Geolocation');
+        },
+        (err) => {
+          // IMPORTANT: Do NOT reject attendance because of location/permission failure or distance!
+          submitSelfAttendance(
+            { latitude: 34.3980, longitude: 74.2831 },
+            12.0,
+            `Campus Station Fallback (${err.message})`
+          );
+        },
+        { timeout: 7000, enableHighAccuracy: true }
+      );
+    } else {
+      submitSelfAttendance(
+        { latitude: 34.3980, longitude: 74.2831 },
+        15.0,
+        'Device Hardware Fallback'
+      );
+    }
   };
 
-  // Batch students for attendance derived from: teacher assignment + actual student enrollment
+  // Batch students for attendance strictly derived from: teacher assignment + actual student enrollment
   const activeBatch = batches.find((b) => b.id === selectedBatchId) || batches[0];
   const activeBatchStudents = useMemo(() => {
     return getStudentsForTeacher({
-      teacherId: currentUser?.id || facultyProfile?.id,
-      teacherName: currentUser?.name || facultyProfile?.name,
+      teacherId: currentUser?.id || facultyProfile?.id || 'u-faculty',
+      teacherName: currentUser?.name || facultyProfile?.name || 'Dr. Rahul Sharma',
       teacherAssignments,
       students: scopedStudents,
       batchId: selectedBatchId,
       subjectId: selectedSubjectFilter,
-      isSuperOrHq,
+      isSuperOrHq: false, // In teacher console, strictly scope to teacher's authorized subject students
     });
-  }, [currentUser, facultyProfile, teacherAssignments, scopedStudents, selectedBatchId, selectedSubjectFilter, isSuperOrHq]);
+  }, [currentUser, facultyProfile, teacherAssignments, scopedStudents, selectedBatchId, selectedSubjectFilter]);
+
+  // Derived subjects the teacher teaches in the selected batch
+  const teacherBatchSubjects = useMemo(() => {
+    const tId = currentUser?.id || facultyProfile?.id || 'u-faculty';
+    const tName = currentUser?.name || facultyProfile?.name || 'Dr. Rahul Sharma';
+    const myBatchAssignments = (teacherAssignments || []).filter((ta) => {
+      const idMatch = ta.teacherId === tId || ta.userId === tId;
+      const nameMatch = ta.teacherName && tName && ta.teacherName.toLowerCase() === tName.toLowerCase();
+      return (idMatch || nameMatch) && (!selectedBatchId || ta.batchId === selectedBatchId);
+    });
+    return myBatchAssignments.map((ta) => ({
+      id: ta.subjectId,
+      name: ta.subjectName || CANONICAL_SUBJECTS.find((s) => s.id === ta.subjectId)?.name || 'Subject',
+    }));
+  }, [teacherAssignments, currentUser, facultyProfile, selectedBatchId]);
 
   const getStudentStatus = (studentId) => {
     const rec = attendanceRecords.find(
@@ -144,9 +217,12 @@ export const FacultyPortalView = () => {
 
   const handleMarkAllStudents = (status) => {
     if (!canMarkAttendance) return;
-    markBatchAttendance(selectedBatchId, attendanceDate, status);
-    setAttendanceSuccessMsg(`Batch attendance updated to all ${status.toUpperCase()}.`);
-    setTimeout(() => setAttendanceSuccessMsg(null), 3000);
+    // Teacher marks attendance ONLY for their authorized assigned students!
+    activeBatchStudents.forEach((st) => {
+      markStudentAttendance(st.id, attendanceDate, status);
+    });
+    setAttendanceSuccessMsg(`Batch attendance updated to all ${status.toUpperCase()} for ${activeBatchStudents.length} assigned students.`);
+    setTimeout(() => setAttendanceSuccessMsg(null), 3500);
   };
 
   const handleCreateHomework = (e) => {
@@ -243,6 +319,89 @@ export const FacultyPortalView = () => {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Teacher's Own Biometric & Location Punch Status */}
+      <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className={`p-2.5 rounded-xl ${myTodayAttendance ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-amber-50 text-amber-700 border border-amber-200'}`}>
+              <MapPin className="h-5 w-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+                  Teacher Own Attendance Record
+                </h3>
+                <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                  myTodayAttendance?.status?.includes('Checked Out')
+                    ? 'bg-blue-100 text-blue-800'
+                    : myTodayAttendance
+                    ? 'bg-emerald-100 text-emerald-800'
+                    : 'bg-amber-100 text-amber-800'
+                }`}>
+                  {myTodayAttendance ? myTodayAttendance.status : 'Not Clocked In Today'}
+                </span>
+                <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded text-[10px] font-medium border border-slate-200">
+                  No Geofence Rejection
+                </span>
+              </div>
+              <div className="mt-1 text-xs text-slate-600 flex flex-wrap items-center gap-x-4 gap-y-1">
+                <span>
+                  Check-in: <strong>{myTodayAttendance ? myTodayAttendance.checkInTime : '—'}</strong>
+                </span>
+                {myTodayAttendance?.checkOutTime && (
+                  <span>
+                    Check-out: <strong>{myTodayAttendance.checkOutTime}</strong>
+                  </span>
+                )}
+                <span>
+                  Coordinates: <strong>{myTodayAttendance?.latitude ? `${myTodayAttendance.latitude.toFixed(4)}° N, ${myTodayAttendance.longitude.toFixed(4)}° E` : '34.3980° N, 74.2831° E'}</strong>
+                </span>
+                <span>
+                  Accuracy: <strong>±{Math.round(myTodayAttendance?.locationAccuracy || myTodayAttendance?.accuracyMeters || 10)}m</strong>
+                </span>
+                <span className="text-slate-400 font-mono text-[11px]">
+                  {myTodayAttendance?.deviceMetadata ? myTodayAttendance.deviceMetadata.slice(0, 40) + '...' : 'Verified Device'}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            {canMarkAttendance && (
+              <button
+                onClick={handleSelfPunchIn}
+                disabled={gpsLoading || Boolean(myTodayAttendance?.checkOutTime)}
+                className={`flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-xs font-bold transition shadow-xs ${
+                  myTodayAttendance?.checkOutTime
+                    ? 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200'
+                    : myTodayAttendance
+                    ? 'bg-blue-900 text-white hover:bg-blue-800'
+                    : 'bg-emerald-600 text-white hover:bg-emerald-500'
+                }`}
+              >
+                <MapPin className="h-4 w-4" />
+                <span>
+                  {gpsLoading
+                    ? 'Capturing Location...'
+                    : myTodayAttendance?.checkOutTime
+                    ? 'Full Day Completed'
+                    : myTodayAttendance
+                    ? 'Clock Out'
+                    : 'Punch In (Capture GPS)'}
+                </span>
+              </button>
+            )}
+          </div>
+        </div>
+
+        {gpsStatusMessage && (
+          <div className="mt-2.5 rounded-lg bg-blue-50 border border-blue-200 p-2 text-xs text-blue-900 font-medium flex items-center gap-2">
+            <CheckCircle2 className="h-4 w-4 text-blue-700 shrink-0" />
+            <span>{gpsStatusMessage}</span>
+          </div>
+        )}
       </div>
 
       {/* Navigation Tabs */}
@@ -406,11 +565,17 @@ export const FacultyPortalView = () => {
                 className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-800 shadow-2xs"
               >
                 <option value="all">All Assigned Subjects</option>
-                {CANONICAL_SUBJECTS.map((sub) => (
-                  <option key={sub.id} value={sub.id}>
-                    {sub.name}
-                  </option>
-                ))}
+                {teacherBatchSubjects.length > 0
+                  ? teacherBatchSubjects.map((sub) => (
+                      <option key={sub.id} value={sub.id}>
+                        {sub.name} (Assigned)
+                      </option>
+                    ))
+                  : CANONICAL_SUBJECTS.map((sub) => (
+                      <option key={sub.id} value={sub.id}>
+                        {sub.name}
+                      </option>
+                    ))}
               </select>
 
               <input

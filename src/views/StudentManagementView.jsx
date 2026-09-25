@@ -17,6 +17,7 @@ import {
 import { useErpData } from '../context/ErpDataContext';
 import { useAuth } from '../context/AuthContext';
 import { StudentAvatar } from '../components/common/StudentAvatar';
+import { EmptyState } from '../components/common/EmptyState';
 import {
   CANONICAL_SUBJECTS,
   CANONICAL_SUBJECT_COMBOS,
@@ -815,7 +816,7 @@ export const StudentManagementView = ({ initialStudentId }) => {
                   </h4>
                   {studentResults.length === 0 ? (
                     <div className="rounded-xl border border-slate-200 p-6 text-center text-slate-400">
-                      No official test records logged yet for this candidate.
+                      No test records logged yet for this candidate.
                     </div>
                   ) : (
                     <div className="space-y-3">

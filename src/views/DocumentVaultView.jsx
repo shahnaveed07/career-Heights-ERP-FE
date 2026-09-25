@@ -68,7 +68,7 @@ export const DocumentVaultView = () => {
             {approvedCount}
           </div>
           <span className="text-[10px] font-bold text-emerald-700">
-            Official seal applied
+            Approved in local state
           </span>
         </div>
 
@@ -80,7 +80,7 @@ export const DocumentVaultView = () => {
             {pendingCount}
           </div>
           <span className="text-[10px] font-bold text-amber-700">
-            Needs admin signature
+            Needs admin review
           </span>
         </div>
 
@@ -90,7 +90,7 @@ export const DocumentVaultView = () => {
           </span>
           <div className="mt-1 text-2xl font-black text-blue-900">AES-256</div>
           <span className="text-[10px] text-blue-700">
-            Tamper-proof audit logs
+            Demo Audit Trail Logged
           </span>
         </div>
       </div>
@@ -238,7 +238,7 @@ export const DocumentVaultView = () => {
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-500">Verification Seal:</span>
+                <span className="text-slate-500">Verification Status:</span>
                 <span className="capitalize font-bold text-blue-900">
                   {selectedDocPreview.status}
                 </span>
@@ -251,8 +251,7 @@ export const DocumentVaultView = () => {
                   {selectedDocPreview.docType} Preview
                 </p>
                 <p className="text-[11px] text-slate-400">
-                  Digitally scanned and stamped by Career Heights Registrar
-                  Office
+                  Digital KYC document record stored in local demo session
                 </p>
               </div>
             </div>
@@ -272,7 +271,7 @@ export const DocumentVaultView = () => {
                   }}
                   className="rounded-lg bg-emerald-600 px-4 py-2 font-bold text-white hover:bg-emerald-700"
                 >
-                  Confirm Official Approval
+                  Approve Verification
                 </button>
               )}
             </div>

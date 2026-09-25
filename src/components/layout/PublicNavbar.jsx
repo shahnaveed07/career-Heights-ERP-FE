@@ -63,7 +63,7 @@ export const PublicNavbar = ({
   };
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-slate-200/90 bg-white/95 backdrop-blur-md shadow-xs">
+    <header className="sticky top-0 z-50 w-full border-b border-slate-200/90 bg-white/95 backdrop-blur-md shadow-xs">
       {/* Top micro bar with institute regional presence (visible on sm+ screens >= 640px) */}
       <div className="hidden border-b border-slate-100 bg-slate-900 py-1.5 px-3 sm:px-6 lg:px-8 text-xs text-slate-300 sm:block">
         <div className="mx-auto flex max-w-7xl items-center justify-between">
@@ -106,7 +106,7 @@ export const PublicNavbar = ({
         <button
           type="button"
           onClick={() => handleLinkClick('home')}
-          className="flex items-center gap-2 sm:gap-2.5 text-left focus:outline-none focus:ring-2 focus:ring-blue-800 rounded-lg p-0.5 shrink-0"
+          className="flex items-center gap-2 sm:gap-2.5 text-left rounded-lg p-0.5 shrink-0 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-900"
           aria-label="Career Heights Home"
         >
           <div className="flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-900 via-blue-800 to-indigo-950 text-white shadow-xs ring-1 ring-blue-900/20 shrink-0">
@@ -127,9 +127,9 @@ export const PublicNavbar = ({
           </div>
         </button>
 
-        {/* Desktop Navigation Links (xl breakpoint >= 1280px for generous spacing without wrapping) */}
+        {/* Single Desktop Navigation (no duplicated arrays) */}
         <nav
-          className="hidden xl:flex items-center gap-1"
+          className="hidden lg:flex items-center gap-0.5 xl:gap-1"
           aria-label="Main Navigation"
         >
           {PUBLIC_NAV_ITEMS.map((link) => {
@@ -139,7 +139,7 @@ export const PublicNavbar = ({
                 type="button"
                 key={link.id}
                 onClick={() => handleLinkClick(link.id)}
-                className={`relative px-3 py-2 text-xs font-semibold rounded-lg transition whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-blue-900 ${
+                className={`relative px-2.5 py-1.5 xl:px-3 xl:py-2 text-[11px] xl:text-xs font-semibold rounded-lg transition whitespace-nowrap focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-900 ${
                   isActive
                     ? 'text-blue-900 bg-blue-50/90 font-bold'
                     : 'text-slate-600 hover:text-slate-950 hover:bg-slate-50'
@@ -148,35 +148,7 @@ export const PublicNavbar = ({
               >
                 {link.label}
                 {isActive && (
-                  <span className="absolute bottom-0 left-3 right-3 h-0.5 bg-blue-900 rounded-full" />
-                )}
-              </button>
-            );
-          })}
-        </nav>
-
-        {/* Medium Desktop / Laptop Compact Links (1024px to 1279px) */}
-        <nav
-          className="hidden lg:flex xl:hidden items-center gap-0.5"
-          aria-label="Main Navigation Laptop"
-        >
-          {PUBLIC_NAV_ITEMS.map((link) => {
-            const isActive = activePage === link.id;
-            return (
-              <button
-                type="button"
-                key={link.id}
-                onClick={() => handleLinkClick(link.id)}
-                className={`relative px-2 py-1.5 text-[11px] font-semibold rounded-md transition whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-blue-900 ${
-                  isActive
-                    ? 'text-blue-900 bg-blue-50/90 font-bold'
-                    : 'text-slate-600 hover:text-slate-950 hover:bg-slate-50'
-                }`}
-                aria-current={isActive ? 'page' : undefined}
-              >
-                {link.label}
-                {isActive && (
-                  <span className="absolute bottom-0 left-2 right-2 h-0.5 bg-blue-900 rounded-full" />
+                  <span className="absolute bottom-0 left-2 right-2 xl:left-3 xl:right-3 h-0.5 bg-blue-900 rounded-full" />
                 )}
               </button>
             );
@@ -188,8 +160,8 @@ export const PublicNavbar = ({
           <button
             type="button"
             onClick={handleLoginClick}
-            className="flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-slate-950 transition shadow-2xs whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-blue-900"
-            title="Student & Parent ERP Access"
+            className="flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-slate-950 transition shadow-2xs whitespace-nowrap focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-900"
+            title="Student &amp; Parent ERP Access"
           >
             <LogIn className="h-3.5 w-3.5 text-blue-800 shrink-0" />
             <span>Student Login</span>
@@ -198,7 +170,7 @@ export const PublicNavbar = ({
           <button
             type="button"
             onClick={handleLoginClick}
-            className="flex items-center gap-1.5 rounded-lg bg-blue-900 px-3.5 py-2 text-xs font-bold text-white hover:bg-blue-800 transition shadow-xs whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-blue-900"
+            className="flex items-center gap-1.5 rounded-lg bg-blue-900 px-3.5 py-2 text-xs font-bold text-white hover:bg-blue-800 transition shadow-xs whitespace-nowrap focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-900"
           >
             <span>ERP Portal</span>
           </button>

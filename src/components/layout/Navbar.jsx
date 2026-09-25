@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Bell,
@@ -48,6 +48,20 @@ export const Navbar = ({
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showRoleSwitcher, setShowRoleSwitcher] = useState(false);
   const [showBranchDropdown, setShowBranchDropdown] = useState(false);
+
+  // Close open dropdowns on Escape key
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setShowNotifications(false);
+        setShowUserMenu(false);
+        setShowRoleSwitcher(false);
+        setShowBranchDropdown(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   const unreadNotifications = notifications.filter((n) => !n.read);
 
@@ -139,28 +153,31 @@ export const Navbar = ({
           {accessibleBranches.length > 1 || isSuperOrHq ? (
             <div className="relative">
               <button
+                type="button"
                 onClick={() => {
                   setShowBranchDropdown(!showBranchDropdown);
                   setShowUserMenu(false);
                   setShowRoleSwitcher(false);
                   setShowNotifications(false);
                 }}
-                className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-xs font-semibold text-slate-800 transition hover:bg-slate-100 shadow-2xs"
+                className="flex items-center gap-1 sm:gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-2 sm:px-2.5 py-1.5 text-xs font-semibold text-slate-800 transition hover:bg-slate-100 shadow-2xs focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-900"
+                aria-label="Select Operating Campus"
+                aria-expanded={showBranchDropdown}
               >
-                <Building2 className="h-3.5 w-3.5 text-blue-900" />
+                <Building2 className="h-3.5 w-3.5 text-blue-900 shrink-0" />
                 <span className="font-medium text-slate-500 hidden md:inline">
                   Campus:
                 </span>
-                <span className="font-bold text-blue-950 truncate max-w-[120px] sm:max-w-[160px]">
+                <span className="font-bold text-blue-950 truncate max-w-[75px] xs:max-w-[110px] sm:max-w-[150px]">
                   {activeBranchFilter === 'all'
-                    ? 'All Campuses (Consolidated)'
-                    : `${currentBranchObj?.name || 'Selected'} Campus`}
+                    ? 'All Campuses'
+                    : currentBranchObj?.shortName || currentBranchObj?.name || 'Selected'}
                 </span>
-                <ChevronDown className="h-3 w-3 text-slate-500" />
+                <ChevronDown className="h-3 w-3 text-slate-500 shrink-0" />
               </button>
 
               {showBranchDropdown && (
-                <div className="absolute left-0 mt-1.5 w-64 rounded-xl border border-slate-200 bg-white py-1.5 shadow-xl z-50">
+                <div className="absolute left-0 mt-1.5 w-64 max-w-[calc(100vw-1.5rem)] rounded-xl border border-slate-200 bg-white py-1.5 shadow-xl z-50">
                   <div className="px-3 py-1.5 border-b border-slate-100">
                     <p className="text-[11px] font-bold text-slate-900">
                       Select Operating Campus Focus
@@ -237,12 +254,13 @@ export const Navbar = ({
         </div>
       </div>
 
-      <div className="flex items-center gap-2 sm:gap-3">
+      <div className="flex items-center gap-1.5 sm:gap-2.5">
         {/* VIEW ONLY VS EDIT MODE TOGGLE */}
         <div className="flex items-center">
           <button
+            type="button"
             onClick={toggleUiMode}
-            className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-black transition shadow-2xs ${
+            className={`flex items-center gap-1 sm:gap-1.5 rounded-lg border px-2 sm:px-2.5 py-1.5 text-xs font-black transition shadow-2xs focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-900 ${
               uiMode === 'view'
                 ? 'border-amber-400 bg-amber-50 text-amber-900 hover:bg-amber-100'
                 : 'border-emerald-500 bg-emerald-50 text-emerald-900 hover:bg-emerald-100'
@@ -252,16 +270,19 @@ export const Navbar = ({
                 ? 'Current: VIEW ONLY mode (Inspections & search allowed, mutating actions locked). Click to switch to Edit Mode.'
                 : 'Current: EDIT MODE (Authorized mutations allowed). Click to switch to View Only mode.'
             }
+            aria-label={`Current mode: ${uiMode === 'view' ? 'View Only' : 'Edit Mode'}. Click to toggle.`}
           >
             {uiMode === 'view' ? (
               <>
                 <Eye className="h-3.5 w-3.5 text-amber-700 shrink-0" />
-                <span className="uppercase tracking-wider">VIEW ONLY</span>
+                <span className="uppercase tracking-wider hidden sm:inline">VIEW ONLY</span>
+                <span className="uppercase tracking-wider sm:hidden text-[10px]">VIEW</span>
               </>
             ) : (
               <>
                 <Edit3 className="h-3.5 w-3.5 text-emerald-700 shrink-0" />
-                <span className="uppercase tracking-wider">EDIT MODE</span>
+                <span className="uppercase tracking-wider hidden sm:inline">EDIT MODE</span>
+                <span className="uppercase tracking-wider sm:hidden text-[10px]">EDIT</span>
               </>
             )}
           </button>
@@ -270,23 +291,26 @@ export const Navbar = ({
         {/* Quick Demo Role Switcher */}
         <div className="relative">
           <button
+            type="button"
             onClick={() => {
               setShowRoleSwitcher(!showRoleSwitcher);
               setShowUserMenu(false);
               setShowNotifications(false);
               setShowBranchDropdown(false);
             }}
-            className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-xs font-bold text-slate-800 shadow-2xs hover:bg-slate-100"
+            className="flex items-center gap-1 sm:gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-2 sm:px-2.5 py-1.5 text-xs font-bold text-slate-800 shadow-2xs hover:bg-slate-100 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-900"
             title="Fast switch between demo roles to test all authority tiers"
+            aria-label="Switch Role"
+            aria-expanded={showRoleSwitcher}
           >
-            <UserCheck className="h-3.5 w-3.5 text-blue-700" />
-            <span className="hidden sm:inline">Role:</span>
-            <span className="truncate max-w-[120px]">{displayRoleTitle}</span>
-            <ChevronDown className="h-3 w-3 text-slate-500" />
+            <UserCheck className="h-3.5 w-3.5 text-blue-700 shrink-0" />
+            <span className="hidden md:inline text-slate-500">Role:</span>
+            <span className="truncate max-w-[65px] xs:max-w-[95px] sm:max-w-[120px]">{displayRoleTitle}</span>
+            <ChevronDown className="h-3 w-3 text-slate-500 shrink-0" />
           </button>
 
           {showRoleSwitcher && (
-            <div className="absolute right-0 mt-1.5 w-64 rounded-xl border border-slate-200 bg-white py-1.5 shadow-xl z-50">
+            <div className="absolute right-0 mt-1.5 w-64 max-w-[calc(100vw-1.5rem)] rounded-xl border border-slate-200 bg-white py-1.5 shadow-xl z-50">
               <div className="px-3 py-1.5 border-b border-slate-100">
                 <p className="text-[11px] font-bold text-slate-900">
                   Switch Demo Role (1-Click)
@@ -298,6 +322,7 @@ export const Navbar = ({
               <div className="max-h-72 overflow-y-auto py-1">
                 {rolesList.map((r) => (
                   <button
+                    type="button"
                     key={r.role}
                     onClick={() => {
                       loginAsDemoRole(r.role);
@@ -327,14 +352,17 @@ export const Navbar = ({
         {/* Notifications Popover */}
         <div className="relative">
           <button
+            type="button"
             onClick={() => {
               setShowNotifications(!showNotifications);
               setShowUserMenu(false);
               setShowRoleSwitcher(false);
               setShowBranchDropdown(false);
             }}
-            className="relative rounded-lg p-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition"
+            className="relative rounded-lg p-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-900"
             title="System Alerts"
+            aria-label={`Notifications, ${unreadNotifications.length} unread`}
+            aria-expanded={showNotifications}
           >
             <Bell className="h-5 w-5" />
             {unreadNotifications.length > 0 && (
@@ -345,7 +373,7 @@ export const Navbar = ({
           </button>
 
           {showNotifications && (
-            <div className="absolute right-0 mt-2 w-80 rounded-xl border border-slate-200 bg-white p-2 shadow-xl z-50">
+            <div className="absolute right-0 mt-2 w-80 max-w-[calc(100vw-1.5rem)] rounded-xl border border-slate-200 bg-white p-2 shadow-xl z-50">
               <div className="flex items-center justify-between border-b border-slate-100 px-3 py-2">
                 <span className="text-xs font-bold text-slate-900">
                   Notifications &amp; Activity
@@ -391,16 +419,19 @@ export const Navbar = ({
           )}
         </div>
 
-        {/* User Profile Pill */}
+        {/* User Profile Button */}
         <div className="relative">
           <button
+            type="button"
             onClick={() => {
               setShowUserMenu(!showUserMenu);
               setShowNotifications(false);
               setShowRoleSwitcher(false);
               setShowBranchDropdown(false);
             }}
-            className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white p-1.5 sm:px-3 sm:py-1.5 hover:bg-slate-50 transition"
+            className="flex items-center gap-1.5 sm:gap-2 rounded-lg border border-slate-200 bg-white p-1.5 sm:px-3 sm:py-1.5 hover:bg-slate-50 transition focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-900"
+            aria-label="User Profile Menu"
+            aria-expanded={showUserMenu}
           >
             <StudentAvatar
               photo={currentUser?.avatar}
@@ -420,7 +451,7 @@ export const Navbar = ({
           </button>
 
           {showUserMenu && (
-            <div className="absolute right-0 mt-1.5 w-60 rounded-xl border border-slate-200 bg-white py-1 shadow-lg z-50">
+            <div className="absolute right-0 mt-1.5 w-60 max-w-[calc(100vw-1.5rem)] rounded-xl border border-slate-200 bg-white py-1 shadow-lg z-50">
               <div className="border-b border-slate-100 px-4 py-3">
                 <p className="text-xs font-bold text-slate-900">
                   {currentUser?.name}
@@ -428,11 +459,11 @@ export const Navbar = ({
                 <p className="text-[11px] text-slate-500">
                   {currentUser?.email}
                 </p>
-                <div className="mt-1.5 inline-block rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-bold text-blue-800">
+                <div className="mt-1 text-[11px] font-bold text-blue-900">
                   {displayRoleTitle}
                 </div>
                 {currentUser?.designation && (
-                  <p className="text-[10px] text-slate-500 mt-1 font-medium">
+                  <p className="text-[10px] text-slate-500 mt-0.5 font-medium">
                     {currentUser.designation}
                   </p>
                 )}

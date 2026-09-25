@@ -76,7 +76,7 @@ export const ExaminationOmrView = () => {
       runOmrSimulation(selectedTestId);
       setOmrProcessing(false);
       setOmrProcessedSuccess(
-        `Successfully scanned 120 Optical OMR bubble sheets for ${activeTest?.title}. Processed batch ranks, negative marks, and weak-topic diagnostics!`
+        `Demo action recorded locally: OMR evaluation processed in local state for ${activeTest?.title || 'test'}. Batch ranks, negative scoring, and diagnostics updated.`
       );
       setActiveTab('ranks');
     }, 1200);
@@ -274,11 +274,10 @@ export const ExaminationOmrView = () => {
                 <UploadCloud className="h-8 w-8" />
               </div>
               <h4 className="text-sm font-bold text-slate-900">
-                Upload OMR Batch Scans (TIFF/PDF/JPG)
+                OMR Batch Scanner (Demo Simulation)
               </h4>
               <p className="mt-1 text-xs text-slate-500 max-w-sm">
-                Optical engine reads 200 sheets per minute. Barcode decoder
-                automatically binds candidate rolls.
+                Optical bubble scoring and candidate roll decoding processed locally in demo environment.
               </p>
 
               <div className="mt-4 flex flex-wrap items-center justify-center gap-3">
