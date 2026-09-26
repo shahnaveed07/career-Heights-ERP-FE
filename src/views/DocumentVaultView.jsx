@@ -1,6 +1,7 @@
-import { useState } from 'react';
-import { FileCheck2, Search, Eye, FileText } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { FileCheck2, Search, Eye, FileText, X } from 'lucide-react';
 import { useErpData } from '../context/ErpDataContext';
+import { EmptyState } from '../components/common/EmptyState';
 export const DocumentVaultView = () => {
   const { documents, updateDocumentStatus } = useErpData();
   const [searchTerm, setSearchTerm] = useState('');
@@ -17,6 +18,28 @@ export const DocumentVaultView = () => {
   });
   const pendingCount = documents.filter((d) => d.status === 'pending').length;
   const approvedCount = documents.filter((d) => d.status === 'approved').length;
+
+  // Keyboard navigation & body scroll lock for document preview modal
+  useEffect(() => {
+    if (selectedDocPreview) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && selectedDocPreview) {
+        setSelectedDocPreview(null);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.body.style.overflow = '';
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [selectedDocPreview]);
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -204,23 +227,42 @@ export const DocumentVaultView = () => {
                 </td>
               </tr>
             ))}
+            {filteredDocs.length === 0 && (
+              <tr>
+                <td colSpan={6} className="p-8">
+                  <EmptyState
+                    title="No documents found"
+                    description="No compliance or KYC document records match your search or status filter."
+                    actionLabel={searchTerm ? 'Clear Search' : undefined}
+                    onAction={searchTerm ? () => setSearchTerm('') : undefined}
+                  />
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
 
       {/* DOCUMENT PREVIEW MODAL */}
       {selectedDocPreview && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs">
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="doc-inspect-title"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs"
+        >
           <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl border border-slate-300">
             <div className="flex items-center justify-between pb-3 border-b border-slate-200">
-              <h3 className="font-bold text-slate-900 text-sm">
+              <h3 id="doc-inspect-title" className="font-bold text-slate-900 text-sm">
                 Document Inspection: {selectedDocPreview.docType}
               </h3>
               <button
+                type="button"
                 onClick={() => setSelectedDocPreview(null)}
-                className="text-slate-400 hover:text-slate-700 font-bold"
+                aria-label="Close dialog"
+                className="rounded-lg p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-900"
               >
-                ✕
+                <X className="h-5 w-5" aria-hidden="true" />
               </button>
             </div>
 

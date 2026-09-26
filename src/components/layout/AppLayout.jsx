@@ -40,7 +40,7 @@ export const AppLayout = ({ activeModule, onSelectModule, onGoToPublicWebsite, c
           onClose={() => setSidebarOpen(false)}
         />
 
-        <main className="flex-1 overflow-y-auto bg-slate-50/70 p-4 sm:p-6 lg:p-8">
+        <main className="flex-1 min-w-0 overflow-y-auto bg-slate-50/70 p-3 sm:p-6 lg:p-8">
           <div className="mx-auto max-w-7xl">
             {children ? children : <Outlet />}
           </div>

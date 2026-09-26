@@ -240,6 +240,28 @@ export const StudentManagementView = ({ initialStudentId }) => {
     setShowAddModal(false);
     handleOpenStudent(created);
   };
+
+  // Keyboard navigation & body scroll lock for modals
+  useEffect(() => {
+    const isAnyModalOpen = !!activeStudent || showAddModal;
+    if (isAnyModalOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        if (showAddModal) setShowAddModal(false);
+        else if (activeStudent) handleCloseStudent();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.body.style.overflow = '';
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [activeStudent, showAddModal]);
+
   const filtered = scopedStudents.filter((student) => {
     const searchMatch =
       !searchTerm ||
@@ -298,10 +320,10 @@ export const StudentManagementView = ({ initialStudentId }) => {
           {canCreateStudent ? (
             <button
               onClick={() => setShowAddModal(true)}
-              className="flex items-center gap-1.5 rounded-lg bg-blue-900 px-3.5 py-2 text-xs font-bold text-white shadow-xs hover:bg-blue-800 transition"
+              className="flex items-center gap-1.5 rounded-lg bg-blue-900 px-3.5 py-2 text-xs font-bold text-white shadow-xs hover:bg-blue-800 transition focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-900"
             >
               <Plus className="h-4 w-4" />
-              <span>Enroll New Student</span>
+              <span>Enroll Student</span>
             </button>
           ) : (
             <span className="rounded-lg bg-slate-100 border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-500">
@@ -438,8 +460,13 @@ export const StudentManagementView = ({ initialStudentId }) => {
             <tbody className="divide-y divide-slate-100 bg-white">
               {paginatedStudents.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="py-12 text-center text-slate-400">
-                    No students match the selected filter criteria.
+                  <td colSpan={9} className="p-8">
+                    <EmptyState
+                      title="No students found"
+                      description="No student records match your current search query or filter selection."
+                      actionLabel={searchTerm ? 'Clear Search' : undefined}
+                      onAction={searchTerm ? () => setSearchTerm('') : undefined}
+                    />
                   </td>
                 </tr>
               ) : (
@@ -596,7 +623,12 @@ export const StudentManagementView = ({ initialStudentId }) => {
 
       {/* Student Detail Modal / Drawer */}
       {activeStudent && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-xs">
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="student-drawer-title"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-xs"
+        >
           <div className="max-h-[90vh] w-full max-w-3xl overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl flex flex-col">
             {/* Modal Header */}
             <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50 px-6 py-4">
@@ -608,7 +640,10 @@ export const StudentManagementView = ({ initialStudentId }) => {
                 />
                 <div>
                   <div className="flex items-center gap-2">
-                    <h2 className="text-lg font-bold text-slate-900">
+                    <h2
+                      id="student-drawer-title"
+                      className="text-lg font-bold text-slate-900"
+                    >
                       {activeStudent.name}
                     </h2>
                     <span className="rounded bg-blue-900 px-2 py-0.2 font-mono text-[11px] font-bold text-white">
@@ -622,10 +657,12 @@ export const StudentManagementView = ({ initialStudentId }) => {
                 </div>
               </div>
               <button
+                type="button"
                 onClick={handleCloseStudent}
-                className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-200 hover:text-slate-700"
+                aria-label="Close student details"
+                className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-200 hover:text-slate-700 transition focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-900"
               >
-                <X className="h-5 w-5" />
+                <X className="h-5 w-5" aria-hidden="true" />
               </button>
             </div>
 
@@ -934,23 +971,33 @@ export const StudentManagementView = ({ initialStudentId }) => {
 
       {/* Add New Student Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-xs">
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="add-student-modal-title"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-xs"
+        >
           <div className="max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
             <div className="flex items-center justify-between pb-3 border-b border-slate-200">
               <div>
-                <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                <h2
+                  id="add-student-modal-title"
+                  className="text-base font-bold text-slate-900 flex items-center gap-2"
+                >
                   <GraduationCap className="h-5 w-5 text-blue-900" />
-                  <span>Student Admission &amp; Enrollment Master</span>
+                  <span>Enroll Student</span>
                 </h2>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  Hierarchy: Branch → Class → Wing → Batch. Independent subject enrollment with optional combo template.
+                  Register new student admission, batch allocation, and subject enrollment.
                 </p>
               </div>
               <button
+                type="button"
                 onClick={() => setShowAddModal(false)}
-                className="text-slate-400 hover:text-slate-700"
+                aria-label="Close enrollment form"
+                className="rounded-lg p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-900"
               >
-                <X className="h-5 w-5" />
+                <X className="h-5 w-5" aria-hidden="true" />
               </button>
             </div>
 

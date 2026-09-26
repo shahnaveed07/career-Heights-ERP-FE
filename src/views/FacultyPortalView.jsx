@@ -16,6 +16,7 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { useErpData } from '../context/ErpDataContext';
 import { StudentAvatar } from '../components/common/StudentAvatar';
+import { EmptyState } from '../components/common/EmptyState';
 import { getTodayDateString } from '../utils/dateUtils';
 import { normalizeRole, SYSTEM_ROLES } from '../utils/permissionManager';
 import {
@@ -646,8 +647,11 @@ export const FacultyPortalView = () => {
                 <tbody className="divide-y divide-slate-100">
                   {activeBatchStudents.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="py-6 text-center text-slate-400">
-                        No students enrolled in your assigned subjects for this batch.
+                      <td colSpan={6} className="p-8">
+                        <EmptyState
+                          title="No students found"
+                          description="No students are currently enrolled in your assigned subjects for this batch."
+                        />
                       </td>
                     </tr>
                   ) : (

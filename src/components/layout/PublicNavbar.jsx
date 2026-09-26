@@ -117,7 +117,7 @@ export const PublicNavbar = ({
               <span className="font-extrabold tracking-tight text-slate-950 text-sm sm:text-base lg:text-lg whitespace-nowrap">
                 CAREER HEIGHTS
               </span>
-              <span className="rounded bg-blue-100 px-1.5 py-0.5 text-[9px] font-bold tracking-wider text-blue-900 uppercase shrink-0">
+              <span className="rounded bg-blue-100 px-1.5 py-0.5 text-[9px] font-bold tracking-wider text-blue-900 uppercase shrink-0 hidden xs:inline">
                 Kashmir
               </span>
             </div>
@@ -176,13 +176,23 @@ export const PublicNavbar = ({
           </button>
         </div>
 
-        {/* Mobile / Tablet Controls (< 1024px): Logo + Hamburger Button only at narrow widths */}
+        {/* Mobile / Tablet Controls (< 1024px) */}
         <div className="flex items-center gap-1.5 sm:gap-2 lg:hidden shrink-0">
+          <button
+            type="button"
+            onClick={handleLoginClick}
+            className="flex sm:hidden items-center gap-1 rounded-lg bg-blue-900 px-2.5 py-1.5 text-xs font-bold text-white hover:bg-blue-800 transition shadow-2xs whitespace-nowrap focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-900"
+            aria-label="Login to ERP"
+          >
+            <LogIn className="h-3.5 w-3.5" aria-hidden="true" />
+            <span>Login</span>
+          </button>
+
           {/* Accessible Hamburger button */}
           <button
             type="button"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="rounded-lg p-2 text-slate-700 hover:bg-slate-100 hover:text-slate-950 focus:outline-none focus:ring-2 focus:ring-blue-900 shrink-0"
+            className="rounded-lg p-2 text-slate-700 hover:bg-slate-100 hover:text-slate-950 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-900 shrink-0"
             aria-label={mobileMenuOpen ? 'Close navigation menu' : 'Open navigation menu'}
             aria-expanded={mobileMenuOpen}
             aria-controls="mobile-navigation-menu"

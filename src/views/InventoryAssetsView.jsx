@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Search, Plus } from 'lucide-react';
+import { Search, Plus, X } from 'lucide-react';
 import { useErpData } from '../context/ErpDataContext';
 import { useAuth } from '../context/AuthContext';
+import { EmptyState } from '../components/common/EmptyState';
 export const InventoryAssetsView = () => {
   const { assets, scopedInventory, addAsset, branches } = useErpData();
   const { activeBranchFilter } = useAuth();
@@ -58,6 +59,28 @@ export const InventoryAssetsView = () => {
     });
     setShowAddModal(false);
   };
+
+  // Keyboard navigation & body scroll lock for modal
+  useEffect(() => {
+    if (showAddModal) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && showAddModal) {
+        setShowAddModal(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.body.style.overflow = '';
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [showAddModal]);
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -243,17 +266,44 @@ export const InventoryAssetsView = () => {
                 </td>
               </tr>
             ))}
+            {filteredAssets.length === 0 && (
+              <tr>
+                <td colSpan={7} className="p-8">
+                  <EmptyState
+                    title="No assets found"
+                    description="No inventory or equipment records match your search or filter selection."
+                    actionLabel={searchTerm ? 'Clear Search' : undefined}
+                    onAction={searchTerm ? () => setSearchTerm('') : undefined}
+                  />
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
 
       {/* Provision New Asset Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-xs">
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="add-asset-title"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-xs"
+        >
           <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl border border-slate-200">
-            <h3 className="font-bold text-slate-900 text-base mb-3">
-              Add Infrastructure Asset
-            </h3>
+            <div className="flex items-center justify-between pb-3 border-b border-slate-200 mb-3">
+              <h3 id="add-asset-title" className="font-bold text-slate-900 text-base">
+                Add Infrastructure Asset
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowAddModal(false)}
+                aria-label="Close dialog"
+                className="rounded-lg p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-900"
+              >
+                <X className="h-5 w-5" aria-hidden="true" />
+              </button>
+            </div>
             <form onSubmit={handleAddSubmit} className="space-y-3 text-xs">
               <div>
                 <label className="block font-semibold text-slate-700 mb-1">

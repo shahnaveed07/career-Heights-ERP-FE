@@ -108,7 +108,7 @@ export const CommunicationCentreView = () => {
         <div>
           <div className="flex items-center gap-2">
             <span className="rounded bg-blue-100 px-2 py-0.5 text-[10px] font-bold text-blue-800 uppercase tracking-wider">
-              Omnichannel Messaging
+              Notifications &amp; Broadcasts
             </span>
           </div>
           <h1 className="mt-1 text-xl sm:text-2xl font-black text-slate-900 tracking-tight">

@@ -3,6 +3,7 @@ import { Building, CheckCircle2, FileSpreadsheet, Download } from 'lucide-react'
 import { useErpData } from '../context/ErpDataContext';
 import { useAuth } from '../context/AuthContext';
 import { exportExecutiveDossierToCsv } from '../services/exportService';
+import { EmptyState } from '../components/common/EmptyState';
 
 export const ReportsAnalyticsView = () => {
   const {
@@ -122,9 +123,11 @@ export const ReportsAnalyticsView = () => {
             <tbody className="divide-y divide-slate-100">
               {filteredBranches.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-8 text-center text-slate-400">
-                    <Building className="h-8 w-8 mx-auto mb-2 opacity-40 text-slate-400" />
-                    No campuses found matching the active branch filter.
+                  <td colSpan={7} className="p-8">
+                    <EmptyState
+                      title="No campuses found"
+                      description="No campuses match the active filter criteria."
+                    />
                   </td>
                 </tr>
               ) : (

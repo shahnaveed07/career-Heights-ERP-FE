@@ -18,6 +18,7 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { useErpData } from '../context/ErpDataContext';
 import { StudentAvatar } from '../components/common/StudentAvatar';
+import { EmptyState } from '../components/common/EmptyState';
 import { INSTITUTE_CONFIG } from '../config/instituteConfig';
 import { generateNextTransactionRef } from '../utils/idGenerators';
 import {
@@ -917,8 +918,11 @@ export const StudentPortalView = () => {
                 <tbody className="divide-y divide-slate-100">
                   {myPayments.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="py-8 text-center text-slate-400">
-                        No payment records logged yet.
+                      <td colSpan={7} className="p-8">
+                        <EmptyState
+                          title="No payments recorded"
+                          description="No installment transactions have been logged for your account yet."
+                        />
                       </td>
                     </tr>
                   ) : (
@@ -984,8 +988,11 @@ export const StudentPortalView = () => {
                 <tbody className="divide-y divide-slate-100">
                   {myReceipts.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="py-8 text-center text-slate-400">
-                        No receipts generated in this session yet.
+                      <td colSpan={7} className="p-8">
+                        <EmptyState
+                          title="No receipts available"
+                          description="No fee receipts have been issued to your account yet."
+                        />
                       </td>
                     </tr>
                   ) : (

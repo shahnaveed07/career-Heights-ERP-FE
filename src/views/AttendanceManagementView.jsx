@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { getTodayDateString } from '../utils/dateUtils';
 import { StudentAvatar } from '../components/common/StudentAvatar';
 import { createAbsenceNotificationEvent } from '../utils/parentNotificationEvents';
+import { EmptyState } from '../components/common/EmptyState';
 
 export const AttendanceManagementView = () => {
   const {
@@ -230,11 +231,11 @@ export const AttendanceManagementView = () => {
                 <tbody className="divide-y divide-slate-100">
                   {batchStudents.length === 0 ? (
                     <tr>
-                      <td
-                        colSpan={6}
-                        className="py-12 text-center text-slate-400"
-                      >
-                        No students enrolled in this batch roster yet.
+                      <td colSpan={6} className="p-8">
+                        <EmptyState
+                          title="No students in batch"
+                          description="No students have been enrolled into this batch roster yet."
+                        />
                       </td>
                     </tr>
                   ) : (

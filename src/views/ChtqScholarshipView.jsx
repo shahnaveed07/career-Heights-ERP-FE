@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { Search, CheckCircle2 } from 'lucide-react';
 import { useErpData } from '../context/ErpDataContext';
+import { EmptyState } from '../components/common/EmptyState';
 export const ChtqScholarshipView = () => {
   const { chtqSchools, chtqCandidates, updateChtqStatus } = useErpData();
   const [activeTab, setActiveTab] = useState('candidates');
   const [searchTerm, setSearchTerm] = useState('');
   const [scholarshipFilter, setScholarshipFilter] = useState('all');
+  const [outreachActionMessage, setOutreachActionMessage] = useState(null);
   const totalRegistered = chtqSchools.reduce(
     (acc, s) => acc + s.registeredCount,
     0
@@ -65,6 +67,23 @@ export const ChtqScholarshipView = () => {
           </button>
         </div>
       </div>
+
+      {/* Outreach Message Notification Banner */}
+      {outreachActionMessage && (
+        <div className="flex items-center justify-between rounded-xl border border-blue-300 bg-blue-50 px-4 py-2.5 text-xs text-blue-900 shadow-xs">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="h-4 w-4 text-blue-700 shrink-0" />
+            <span className="font-semibold">{outreachActionMessage}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setOutreachActionMessage(null)}
+            className="text-xs font-bold text-blue-700 hover:text-blue-900 underline ml-2"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
 
       {/* 4 Metric Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
@@ -246,6 +265,18 @@ export const ChtqScholarshipView = () => {
                       </td>
                     </tr>
                   ))}
+                  {filteredCandidates.length === 0 && (
+                    <tr>
+                      <td colSpan={7} className="p-8">
+                        <EmptyState
+                          title="No candidates found"
+                          description="No scholarship test candidates match your search query or scholarship filter."
+                          actionLabel={searchTerm ? 'Clear Search' : undefined}
+                          onAction={searchTerm ? () => setSearchTerm('') : undefined}
+                        />
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
@@ -287,8 +318,9 @@ export const ChtqScholarshipView = () => {
 
               <div className="pt-3 border-t border-slate-100 flex justify-between items-center text-xs">
                 <button
+                  type="button"
                   onClick={() =>
-                    alert(
+                    setOutreachActionMessage(
                       `Outreach kit and student admit cards dispatched to ${school.name}.`
                     )
                   }

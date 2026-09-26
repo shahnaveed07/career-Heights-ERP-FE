@@ -3,6 +3,8 @@ import { Plus, UploadCloud, CheckCircle2, Scan, RefreshCw } from 'lucide-react';
 import { useErpData } from '../context/ErpDataContext';
 import { useAuth } from '../context/AuthContext';
 import { getFutureDateString } from '../utils/dateUtils';
+import { EmptyState } from '../components/common/EmptyState';
+import { Modal } from '../components/common/Modal';
 export const ExaminationOmrView = () => {
   const { tests, scopedExams, testResults, addTest, runOmrSimulation, batches, scopedBatches } =
     useErpData();
@@ -45,6 +47,7 @@ export const ExaminationOmrView = () => {
   });
   const [omrProcessing, setOmrProcessing] = useState(false);
   const [omrProcessedSuccess, setOmrProcessedSuccess] = useState(null);
+  const [selectedCardResult, setSelectedCardResult] = useState(null);
   const activeTest = tests.find((t) => t.id === selectedTestId);
   const activeTestResults = testResults.filter(
     (r) => r.testId === selectedTestId
@@ -431,9 +434,11 @@ export const ExaminationOmrView = () => {
               <tbody className="divide-y divide-slate-100">
                 {activeTestResults.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="py-8 text-center text-slate-400">
-                      No results found. Run the OMR Scanner Studio simulation to
-                      compile ranks.
+                    <td colSpan={8} className="p-8">
+                      <EmptyState
+                        title="No results compiled"
+                        description="No examination results are available yet. Run the OMR scanner simulation to compile candidate marks."
+                      />
                     </td>
                   </tr>
                 ) : (
@@ -501,11 +506,8 @@ export const ExaminationOmrView = () => {
 
                       <td className="py-3 px-4 text-right">
                         <button
-                          onClick={() =>
-                            alert(
-                              `Report card generated for ${res.studentName} (${res.totalMarksObtained}/${res.totalMaxMarks}). All-India Rank #${res.instituteRank}.`
-                            )
-                          }
+                          type="button"
+                          onClick={() => setSelectedCardResult(res)}
                           className="rounded-lg bg-blue-900 px-2.5 py-1 text-xs font-bold text-white hover:bg-blue-800 shadow-2xs"
                         >
                           Full Card
@@ -518,6 +520,87 @@ export const ExaminationOmrView = () => {
             </table>
           </div>
         </div>
+      )}
+
+      {/* Report Card Modal */}
+      {selectedCardResult && (
+        <Modal
+          isOpen={Boolean(selectedCardResult)}
+          onClose={() => setSelectedCardResult(null)}
+          title={`Performance Report: ${selectedCardResult.studentName}`}
+          subtitle={`${activeTest?.title || 'Academic Assessment'} • Roll: ${selectedCardResult.rollNo}`}
+          maxWidth="max-w-lg"
+          footer={
+            <div className="flex justify-end w-full">
+              <button
+                type="button"
+                onClick={() => setSelectedCardResult(null)}
+                className="rounded-lg bg-slate-100 px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-200 transition"
+              >
+                Close
+              </button>
+            </div>
+          }
+        >
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-center">
+                <span className="text-[10px] text-slate-500 font-semibold uppercase">Total Score</span>
+                <p className="text-base font-black text-blue-900 mt-0.5">
+                  {selectedCardResult.totalMarksObtained} <span className="text-xs text-slate-400 font-normal">/ {selectedCardResult.totalMaxMarks}</span>
+                </p>
+              </div>
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-center">
+                <span className="text-[10px] text-slate-500 font-semibold uppercase">Percentage</span>
+                <p className="text-base font-black text-slate-900 mt-0.5">
+                  {selectedCardResult.percentage}%
+                </p>
+              </div>
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-center">
+                <span className="text-[10px] text-slate-500 font-semibold uppercase">Institute Rank</span>
+                <p className="text-base font-black text-emerald-700 mt-0.5">
+                  #{selectedCardResult.instituteRank}
+                </p>
+              </div>
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-center">
+                <span className="text-[10px] text-slate-500 font-semibold uppercase">Percentile</span>
+                <p className="text-base font-black text-indigo-700 mt-0.5">
+                  {selectedCardResult.percentile}%ile
+                </p>
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-slate-200 bg-white p-3 space-y-2">
+              <h4 className="text-xs font-bold text-slate-800">Subject Breakdown</h4>
+              <div className="divide-y divide-slate-100">
+                {selectedCardResult.subjects?.map((sub, idx) => (
+                  <div key={idx} className="flex items-center justify-between py-1.5 text-xs">
+                    <span className="font-semibold text-slate-700">{sub.name}</span>
+                    <div className="flex items-center gap-3">
+                      <span className="font-bold text-slate-900">{sub.marksObtained} / {sub.maxMarks}</span>
+                      <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-600">
+                        {((sub.marksObtained / sub.maxMarks) * 100).toFixed(0)}%
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {selectedCardResult.weakTopics && selectedCardResult.weakTopics.length > 0 && (
+              <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-3">
+                <h4 className="text-xs font-bold text-amber-900 mb-1.5">Improvement Focus Areas</h4>
+                <div className="flex flex-wrap gap-1.5">
+                  {selectedCardResult.weakTopics.map((topic, i) => (
+                    <span key={i} className="rounded-md bg-white border border-amber-200 px-2 py-0.5 text-[11px] font-semibold text-amber-800">
+                      {topic}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </Modal>
       )}
     </div>
   );

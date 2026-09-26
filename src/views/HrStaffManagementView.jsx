@@ -21,6 +21,7 @@ import {
 import { useErpData } from '../context/ErpDataContext';
 import { useAuth } from '../context/AuthContext';
 import { StudentAvatar } from '../components/common/StudentAvatar';
+import { EmptyState } from '../components/common/EmptyState';
 import {
   SYSTEM_ROLES,
   ROLE_LABELS,
@@ -334,6 +335,44 @@ export const HrStaffManagementView = () => {
     });
   };
 
+  // Keyboard navigation & body scroll lock for modals
+  useEffect(() => {
+    const isAnyModalOpen =
+      showAddStaffModal ||
+      showTransferModal ||
+      showRoleModal ||
+      showCreateCustomRoleModal ||
+      showEditCustomRoleModal;
+
+    if (isAnyModalOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setShowAddStaffModal(false);
+        setShowTransferModal(false);
+        setShowRoleModal(false);
+        setShowCreateCustomRoleModal(false);
+        setShowEditCustomRoleModal(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.body.style.overflow = '';
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [
+    showAddStaffModal,
+    showTransferModal,
+    showRoleModal,
+    showCreateCustomRoleModal,
+    showEditCustomRoleModal,
+  ]);
+
   return (
     <div className="space-y-6">
       {/* Notifications */}
@@ -500,13 +539,13 @@ export const HrStaffManagementView = () => {
 
           {/* Staff Grid */}
           {filteredEmployees.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-slate-200 bg-white p-12 text-center text-slate-400">
-              <Users className="h-10 w-10 mx-auto mb-2 opacity-40" />
-              <p className="font-semibold text-slate-700">No staff members found</p>
-              <p className="text-xs text-slate-400 mt-1">
-                Try adjusting your search query, department filter, or global branch selection.
-              </p>
-            </div>
+            <EmptyState
+              icon={Users}
+              title="No staff members found"
+              description="No staff members match your search query, department filter, or campus selection."
+              actionLabel={searchQuery ? 'Clear Search' : undefined}
+              onAction={searchQuery ? () => setSearchQuery('') : undefined}
+            />
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {filteredEmployees.map((emp) => {

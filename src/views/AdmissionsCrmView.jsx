@@ -15,6 +15,8 @@ import {
   getFutureDateString,
   isPastOrToday,
 } from '../utils/dateUtils';
+import { EmptyState } from '../components/common/EmptyState';
+
 export const AdmissionsCrmView = () => {
   const {
     enquiries,
@@ -462,11 +464,13 @@ export const AdmissionsCrmView = () => {
               <tbody className="divide-y divide-slate-100">
                 {filteredEnquiries.length === 0 ? (
                   <tr>
-                    <td
-                      colSpan={8}
-                      className="py-12 text-center text-slate-400"
-                    >
-                      No admission leads match the current filters.
+                    <td colSpan={8} className="p-8">
+                      <EmptyState
+                        title="No admission leads found"
+                        description="No admission inquiries match the current filter or status selection."
+                        actionLabel={searchTerm ? 'Clear Search' : undefined}
+                        onAction={searchTerm ? () => setSearchTerm('') : undefined}
+                      />
                     </td>
                   </tr>
                 ) : (

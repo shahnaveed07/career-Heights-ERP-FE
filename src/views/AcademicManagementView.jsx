@@ -15,6 +15,8 @@ import {
 } from 'lucide-react';
 import { useErpData } from '../context/ErpDataContext';
 import { useAuth } from '../context/AuthContext';
+import { Modal } from '../components/common/Modal';
+import { EmptyState } from '../components/common/EmptyState';
 
 export const AcademicManagementView = () => {
   const {
@@ -57,6 +59,7 @@ export const AcademicManagementView = () => {
   const [newDoubtSubject, setNewDoubtSubject] = useState('Physics');
   const [activeAnswerDoubtId, setActiveAnswerDoubtId] = useState(null);
   const [doubtAnswerText, setDoubtAnswerText] = useState('');
+  const [selectedLessonTopic, setSelectedLessonTopic] = useState(null);
 
   // Subject Master Modal
   const [showAddSubjectModal, setShowAddSubjectModal] = useState(false);
@@ -184,7 +187,7 @@ export const AcademicManagementView = () => {
             )}
           </div>
           <h1 className="mt-1 text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-            Academic Master, Subject Combos &amp; Delivery
+            Academics, Subject Combos &amp; Batches
           </h1>
           <p className="mt-0.5 text-xs text-slate-500">
             Hierarchy: Branch → Class → Wing → Batch → Student. Subject combos serve as templates; student subject enrollment is stored per student.
@@ -527,11 +530,8 @@ export const AcademicManagementView = () => {
                     <span>NEET / JEE Benchmarked</span>
                   </span>
                   <button
-                    onClick={() =>
-                      alert(
-                        `Detailed chapter lesson notes for ${topic.title} opened.`
-                      )
-                    }
+                    type="button"
+                    onClick={() => setSelectedLessonTopic(topic)}
                     className="font-bold text-blue-900 hover:underline"
                   >
                     Lesson Plan &rarr;
@@ -1226,6 +1226,59 @@ export const AcademicManagementView = () => {
             </form>
           </div>
         </div>
+      )}
+
+      {/* Lesson Plan Details Modal */}
+      {selectedLessonTopic && (
+        <Modal
+          isOpen={Boolean(selectedLessonTopic)}
+          onClose={() => setSelectedLessonTopic(null)}
+          title={`Lesson Plan: ${selectedLessonTopic.title}`}
+          subtitle={`${selectedLessonTopic.subject} • Chapter ${selectedLessonTopic.chapterNo} • ${selectedLessonTopic.className}`}
+          maxWidth="max-w-lg"
+          footer={
+            <div className="flex justify-end w-full">
+              <button
+                type="button"
+                onClick={() => setSelectedLessonTopic(null)}
+                className="rounded-lg bg-slate-100 px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-200 transition"
+              >
+                Close
+              </button>
+            </div>
+          }
+        >
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                <span className="text-[10px] text-slate-500 font-semibold uppercase">Pacing Status</span>
+                <p className="text-sm font-bold text-slate-900 capitalize mt-0.5">
+                  {selectedLessonTopic.status?.replace('_', ' ')}
+                </p>
+              </div>
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                <span className="text-[10px] text-slate-500 font-semibold uppercase">Completion</span>
+                <p className="text-sm font-bold text-blue-900 mt-0.5">
+                  {selectedLessonTopic.completionPercent}% ({selectedLessonTopic.completedLectures} / {selectedLessonTopic.totalLectures} Lectures)
+                </p>
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-slate-200 bg-white p-3 space-y-2">
+              <h4 className="text-xs font-bold text-slate-800">Pedagogical Modules &amp; Coverage</h4>
+              <ul className="list-disc list-inside space-y-1 text-xs text-slate-600">
+                <li>Core theory lecture modules with numerical problem sessions</li>
+                <li>NCERT / State Board alignment check &amp; exemplar solutions</li>
+                <li>Daily Practice Problems (DPP) sets graded with step marking</li>
+                <li>Competitive NEET / JEE past 10-year question bank analysis</li>
+              </ul>
+            </div>
+
+            <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-3 text-xs text-emerald-900">
+              <strong>Academic Quality Standard:</strong> Benchmarked against national entrance examination syllabi and regular batch diagnostic assessments.
+            </div>
+          </div>
+        </Modal>
       )}
     </div>
   );

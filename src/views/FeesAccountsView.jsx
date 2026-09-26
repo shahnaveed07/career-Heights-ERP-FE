@@ -18,6 +18,7 @@ import {
 import { useErpData } from '../context/ErpDataContext';
 import { useAuth } from '../context/AuthContext';
 import { StudentAvatar } from '../components/common/StudentAvatar';
+import { EmptyState } from '../components/common/EmptyState';
 import { INSTITUTE_CONFIG } from '../config/instituteConfig';
 import { generateNextTransactionRef, isTransactionRefDuplicate } from '../utils/idGenerators';
 
@@ -280,6 +281,28 @@ export const FeesAccountsView = ({ autoOpenPayment }) => {
     }
   };
 
+  // Keyboard navigation & body scroll lock for modals
+  useEffect(() => {
+    const isAnyModalOpen = showPayModal || !!salaryToDisburse || !!receiptToPrint;
+    if (isAnyModalOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        if (receiptToPrint) setReceiptToPrint(null);
+        else if (showPayModal) handleClosePayModal();
+        else if (salaryToDisburse) setSalaryToDisburse(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.body.style.overflow = '';
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [showPayModal, salaryToDisburse, receiptToPrint]);
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -479,8 +502,13 @@ export const FeesAccountsView = ({ autoOpenPayment }) => {
                 <tbody className="divide-y divide-slate-100">
                   {filteredStudents.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="py-12 text-center text-slate-400">
-                        No student fee accounts found matching the current campus filter.
+                      <td colSpan={8} className="p-8">
+                        <EmptyState
+                          title="No fee accounts found"
+                          description="No student fee accounts match the selected campus filter or search criteria."
+                          actionLabel={searchTerm ? 'Clear Search' : undefined}
+                          onAction={searchTerm ? () => setSearchTerm('') : undefined}
+                        />
                       </td>
                     </tr>
                   ) : (
@@ -629,8 +657,11 @@ export const FeesAccountsView = ({ autoOpenPayment }) => {
                 <tbody className="divide-y divide-slate-100">
                   {scopedFees.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="py-8 text-center text-slate-400">
-                        No receipts generated for this campus yet.
+                      <td colSpan={8} className="p-8">
+                        <EmptyState
+                          title="No receipts recorded"
+                          description="No fee receipts have been recorded for the selected campus yet."
+                        />
                       </td>
                     </tr>
                   ) : (
@@ -780,8 +811,11 @@ export const FeesAccountsView = ({ autoOpenPayment }) => {
                 <tbody className="divide-y divide-slate-100">
                   {filteredSalaries.length === 0 ? (
                     <tr>
-                      <td colSpan={9} className="py-12 text-center text-slate-400">
-                        No salary records match the selected filter.
+                      <td colSpan={9} className="p-8">
+                        <EmptyState
+                          title="No salary records found"
+                          description="No payroll records match the selected month or campus filter."
+                        />
                       </td>
                     </tr>
                   ) : (

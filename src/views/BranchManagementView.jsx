@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Building, Plus, MapPin, X, Check, CheckCircle2, ShieldAlert, AlertTriangle } from 'lucide-react';
 import { useErpData } from '../context/ErpDataContext';
 import { useAuth } from '../context/AuthContext';
@@ -52,6 +52,28 @@ export const BranchManagementView = () => {
       capacity: 250,
     });
   };
+
+  // Keyboard navigation & body scroll lock for modals
+  useEffect(() => {
+    if (showAddModal) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && showAddModal) {
+        setShowAddModal(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.body.style.overflow = '';
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [showAddModal]);
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -261,18 +283,28 @@ export const BranchManagementView = () => {
 
       {/* Add New Branch Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-xs">
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="add-branch-modal-title"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-xs"
+        >
           <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
             <div className="flex items-center justify-between pb-3 border-b border-slate-200">
-              <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+              <h3
+                id="add-branch-modal-title"
+                className="text-base font-bold text-slate-900 flex items-center gap-2"
+              >
                 <Building className="h-5 w-5 text-blue-900" />
-                <span>Provision New Campus Branch</span>
+                <span>Add Branch</span>
               </h3>
               <button
+                type="button"
                 onClick={() => setShowAddModal(false)}
-                className="text-slate-400 hover:text-slate-700"
+                aria-label="Close dialog"
+                className="rounded-lg p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-900"
               >
-                <X className="h-5 w-5" />
+                <X className="h-5 w-5" aria-hidden="true" />
               </button>
             </div>
 

@@ -12,6 +12,7 @@ import { useErpData } from '../context/ErpDataContext';
 import { useAuth } from '../context/AuthContext';
 import { isToday, isPastOrToday, isCurrentMonth } from '../utils/dateUtils';
 import { StudentAvatar } from '../components/common/StudentAvatar';
+import { EmptyState } from '../components/common/EmptyState';
 import { normalizeRole, SYSTEM_ROLES } from '../utils/permissionManager';
 import { useNavigate } from 'react-router-dom';
 import { moduleToPath } from '../routes/routeConfig';
@@ -185,9 +186,9 @@ export const CeoDashboardView = ({
             <h1 className="mt-2 text-2xl sm:text-3xl font-black tracking-tight text-slate-900">
               CAREER HEIGHTS —{' '}
               {canonicalRole === SYSTEM_ROLES.BRANCH_ADMIN
-                ? `${currentUser?.branchName || 'BRANCH'} COMMAND CONSOLE`
+                ? `${currentUser?.branchName || 'BRANCH'} DASHBOARD`
                 : canonicalRole === SYSTEM_ROLES.HQ_ADMIN
-                  ? 'HQ OPERATIONS CONSOLE'
+                  ? 'HQ OPERATIONS DASHBOARD'
                   : 'EXECUTIVE DASHBOARD'}
             </h1>
             <p className="mt-1 text-xs sm:text-sm text-slate-500">
@@ -419,8 +420,7 @@ export const CeoDashboardView = ({
               </span>
             </h2>
             <p className="text-xs text-slate-500">
-              Automated algorithmic flags triaged into Red, Amber, and Green
-              management tiers.
+              Action items categorized into Red, Amber, and Green management tiers.
             </p>
           </div>
         </div>
@@ -1106,11 +1106,11 @@ export const CeoDashboardView = ({
             <tbody className="divide-y divide-slate-100 bg-white">
               {filteredBranches.length === 0 ? (
                 <tr>
-                  <td
-                    colSpan={10}
-                    className="py-8 text-center text-xs text-slate-500"
-                  >
-                    No operating branch records found for the selected filter.
+                  <td colSpan={10} className="p-8">
+                    <EmptyState
+                      title="No branches found"
+                      description="No operating campus records match the selected branch filter."
+                    />
                   </td>
                 </tr>
               ) : (

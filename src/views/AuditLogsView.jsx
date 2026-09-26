@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { ShieldAlert, Search, CheckCircle2, Download } from 'lucide-react';
 import { useErpData } from '../context/ErpDataContext';
 import { exportAuditLogsToCsv } from '../services/exportService';
+import { EmptyState } from '../components/common/EmptyState';
 
 export const AuditLogsView = () => {
   const { auditLogs } = useErpData();
@@ -114,12 +115,13 @@ export const AuditLogsView = () => {
           <tbody className="divide-y divide-slate-100 font-mono text-[11px]">
             {filteredLogs.length === 0 ? (
               <tr>
-                <td
-                  colSpan={6}
-                  className="py-8 text-center text-slate-400 font-sans"
-                >
-                  <ShieldAlert className="h-8 w-8 mx-auto mb-2 opacity-40" />
-                  No audit trail records found matching your filters.
+                <td colSpan={6} className="p-8 font-sans">
+                  <EmptyState
+                    title="No audit records found"
+                    description="No system audit logs match your search term or severity filter."
+                    actionLabel={searchTerm ? 'Clear Search' : undefined}
+                    onAction={searchTerm ? () => setSearchTerm('') : undefined}
+                  />
                 </td>
               </tr>
             ) : (
