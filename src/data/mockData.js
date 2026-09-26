@@ -811,6 +811,30 @@ export const DEMO_USERS = {
         'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=160&q=80',
     },
   },
+  'custom@careerheights.demo': {
+    passwordHint: 'Demo@123',
+    user: {
+      id: 'u-custom',
+      email: 'custom@careerheights.demo',
+      name: 'Tariq Ahmad Rather',
+      role: 'custom',
+      roleTitle: 'Custom Role',
+      designation: 'Exam Center Coordinator (Custom RBAC)',
+      branchId: 'b-hdw',
+      branchName: 'Handwara',
+      assignedBranchIds: ['b-hdw'],
+      customRoleId: 'role-exam-officer',
+      customPermissions: {
+        dashboard: ['view'],
+        examination: ['view'],
+        attendance: ['view'],
+        academic: ['view'],
+      },
+      phone: '+91 94190 77001',
+      avatar:
+        'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=160&q=80',
+    },
+  },
 };
 const FIRST_NAMES = [
   'Aarav',

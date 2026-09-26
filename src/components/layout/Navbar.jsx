@@ -107,6 +107,11 @@ export const Navbar = ({
       label: 'HR',
       name: 'Parveena Akhtar',
     },
+    {
+      role: SYSTEM_ROLES.CUSTOM,
+      label: 'Custom Role',
+      name: 'Tariq Ahmad Rather',
+    },
   ];
 
   const canonicalRole = normalizeRole(currentUser?.role);

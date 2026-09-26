@@ -317,6 +317,10 @@ export const DEFAULT_ROLE_PERMISSIONS = {
     reports: ['view'],
     dashboard: ['view'],
   },
+  // Custom Role (Granular user-defined role with custom permissions)
+  [SYSTEM_ROLES.CUSTOM]: {
+    dashboard: ['view'],
+  },
 };
 
 // Aliases mapped into DEFAULT_ROLE_PERMISSIONS for backwards safety
@@ -364,14 +368,27 @@ export function checkPermission(user, moduleOrPermission, action = 'view', uiMod
     return true;
   }
 
-  // Check if user has customPermissions attached
-  if (user.customPermissions) {
-    // Wildcard module in custom permissions
-    if (user.customPermissions['*'] && actionMatches(user.customPermissions['*'], targetAction)) {
-      return true;
-    }
-    if (user.customPermissions[targetModule] && actionMatches(user.customPermissions[targetModule], targetAction)) {
-      return true;
+  // Check if user has customPermissions or permissions attached
+  const customPerms = user.customPermissions || user.permissions;
+  if (customPerms) {
+    if (Array.isArray(customPerms)) {
+      const match = customPerms.some((p) => {
+        if (p === '*' || p === targetModule) return true;
+        const separator = p.includes(':') ? ':' : p.includes('.') ? '.' : null;
+        if (separator) {
+          const [m, a] = p.split(separator);
+          return m === targetModule && actionMatches([a], targetAction);
+        }
+        return false;
+      });
+      if (match) return true;
+    } else if (typeof customPerms === 'object') {
+      if (customPerms['*'] && actionMatches(customPerms['*'], targetAction)) {
+        return true;
+      }
+      if (customPerms[targetModule] && actionMatches(customPerms[targetModule], targetAction)) {
+        return true;
+      }
     }
   }
 

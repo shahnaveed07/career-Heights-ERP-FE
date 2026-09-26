@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { CheckCircle2, AlertTriangle, Send } from 'lucide-react';
 import { useErpData } from '../context/ErpDataContext';
 import { useAuth } from '../context/AuthContext';
@@ -6,6 +6,8 @@ import { getTodayDateString } from '../utils/dateUtils';
 import { StudentAvatar } from '../components/common/StudentAvatar';
 import { createAbsenceNotificationEvent } from '../utils/parentNotificationEvents';
 import { EmptyState } from '../components/common/EmptyState';
+import { normalizeRole, SYSTEM_ROLES } from '../utils/permissionManager';
+import { getStudentsForTeacher } from '../utils/academicModel';
 
 export const AttendanceManagementView = () => {
   const {
@@ -21,9 +23,13 @@ export const AttendanceManagementView = () => {
     scopedStaff,
     teacherAttendanceRecords,
     addParentNotification,
+    teacherAssignments,
   } = useErpData();
-  const { activeBranchFilter } = useAuth();
+  const { activeBranchFilter, currentUser } = useAuth();
   const [activeTab, setActiveTab] = useState('students');
+  const canonicalRole = normalizeRole(currentUser?.role);
+  const isTeacher = canonicalRole === SYSTEM_ROLES.TEACHER;
+
   const availableBatches = scopedBatches;
   const [selectedBatchId, setSelectedBatchId] = useState(
     availableBatches[0]?.id || batches[0]?.id || 'batch-jee-a'
@@ -39,7 +45,19 @@ export const AttendanceManagementView = () => {
     }
   }, [activeBranchFilter, availableBatches, selectedBatchId]);
   const activeBatch = batches.find((b) => b.id === selectedBatchId);
-  const batchStudents = scopedStudents.filter((s) => s.batchId === selectedBatchId);
+  const batchStudents = useMemo(() => {
+    if (isTeacher) {
+      return getStudentsForTeacher({
+        teacherId: currentUser?.id,
+        teacherName: currentUser?.name,
+        teacherAssignments,
+        students: scopedStudents,
+        batchId: selectedBatchId,
+        isSuperOrHq: false,
+      });
+    }
+    return scopedStudents.filter((s) => s.batchId === selectedBatchId);
+  }, [isTeacher, currentUser, teacherAssignments, scopedStudents, selectedBatchId]);
   const getStudentStatus = (studentId) => {
     const rec = attendanceRecords.find(
       (r) => r.studentId === studentId && r.date === selectedDate

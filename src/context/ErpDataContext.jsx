@@ -539,16 +539,18 @@ export const ErpDataProvider = ({ children }) => {
       });
     });
 
-    // Enqueue parent notification event structure
+    // Enqueue parent notification event structure (cleanly replacing same-day attendance notification)
     if (status === 'absent') {
+      const newEvent = createAbsenceNotificationEvent({ student, date: dateStr, session: 'Morning Lecture' });
       setParentNotifications((prev) => [
-        createAbsenceNotificationEvent({ student, date: dateStr, session: 'Morning Lecture' }),
-        ...prev,
+        newEvent,
+        ...prev.filter((n) => !(n.studentId === student.id && (n.type === 'absence' || n.type === 'attendance') && n.metadata?.date === dateStr)),
       ]);
     } else if (status === 'present' || status === 'late') {
+      const newEvent = createAttendanceNotificationEvent({ student, date: dateStr, checkInTime: '08:30 AM', status });
       setParentNotifications((prev) => [
-        createAttendanceNotificationEvent({ student, date: dateStr, checkInTime: '08:30 AM', status }),
-        ...prev,
+        newEvent,
+        ...prev.filter((n) => !(n.studentId === student.id && (n.type === 'absence' || n.type === 'attendance') && n.metadata?.date === dateStr)),
       ]);
     }
 
@@ -1176,9 +1178,14 @@ export const ErpDataProvider = ({ children }) => {
   const addEmployee = (empData) => {
     const id = `emp-${Date.now().toString(36)}`;
     const branch = branches.find((b) => b.id === empData.branchId) || branches[0];
+    const maxStaffNum = employees.reduce((max, e) => {
+      const match = (e.empCode || '').match(/(\d+)/);
+      const n = match ? parseInt(match[0], 10) : 0;
+      return n > max ? n : max;
+    }, 100);
     const newEmp = {
       id,
-      empCode: empData.empCode || `CH-STF-${employees.length + 1}`,
+      empCode: empData.empCode || `CH-STF-${maxStaffNum + 1}`,
       name: empData.name,
       photo:
         empData.photo ||

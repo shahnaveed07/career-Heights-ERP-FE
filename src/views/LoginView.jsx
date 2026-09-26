@@ -58,6 +58,11 @@ const DEMO_ACCOUNTS = [
     label: "HR",
     email: "hr@careerheights.demo",
   },
+  {
+    role: SYSTEM_ROLES.CUSTOM,
+    label: "Custom Role",
+    email: "custom@careerheights.demo",
+  },
 ];
 
 export const LoginView = ({ onBackToHome }) => {
