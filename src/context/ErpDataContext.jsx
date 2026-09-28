@@ -174,6 +174,16 @@ export const ErpDataProvider = ({ children }) => {
     const paid = studentData.feesPaid || 0;
     const pending = Math.max(0, totalFee - paid);
     const admDate = studentData.admissionDate || getTodayDateString();
+
+    const resolvedSubjects =
+      Array.isArray(studentData.enrolledSubjects) && studentData.enrolledSubjects.length > 0
+        ? studentData.enrolledSubjects
+        : studentData.subjectComboId === 'combo-med'
+        ? ['sub-phy', 'sub-chem', 'sub-bot', 'sub-zoo']
+        : studentData.subjectComboId === 'combo-eng'
+        ? ['sub-phy', 'sub-chem', 'sub-math']
+        : [];
+
     const newStudent = {
       id,
       studentId,
@@ -183,10 +193,10 @@ export const ErpDataProvider = ({ children }) => {
         studentData.photo ||
         VALID_STUDENT_AVATARS[students.length % VALID_STUDENT_AVATARS.length],
       gender: studentData.gender || 'Male',
-      dob: studentData.dob || '2008-05-15',
-      email: studentData.email || `student.${id}@careerheights.demo`,
-      phone: studentData.phone || '+91 97970 99999',
-      address: studentData.address || `${branch.name} Town, J&K`,
+      dob: studentData.dob || null,
+      email: studentData.email || '',
+      phone: studentData.phone || '',
+      address: studentData.address || '',
       branchId: branch.id,
       branchName: branch.name,
       classId: studentData.classId || batch.classId,
@@ -196,27 +206,23 @@ export const ErpDataProvider = ({ children }) => {
       batchId: batch.id,
       batchName: batch.name,
       subjectComboId: studentData.subjectComboId || null,
-      enrolledSubjects:
-        Array.isArray(studentData.enrolledSubjects) && studentData.enrolledSubjects.length > 0
-          ? studentData.enrolledSubjects
-          : studentData.subjectComboId === 'combo-med'
-          ? ['sub-phy', 'sub-chem', 'sub-bot', 'sub-zoo']
-          : studentData.subjectComboId === 'combo-eng'
-          ? ['sub-phy', 'sub-chem', 'sub-math']
-          : ['sub-phy'],
-      parentName: studentData.parentName || studentData.fatherName || 'Parent Guardian',
-      parentPhone: studentData.parentPhone || studentData.fatherPhone || '+91 94191 99999',
-      parentEmail: studentData.parentEmail || 'parent@gmail.demo',
-      parentOccupation: studentData.parentOccupation || 'Self-Employed',
-      fatherName: studentData.fatherName || studentData.parentName || 'Father',
-      fatherPhone: studentData.fatherPhone || studentData.parentPhone || '+91 94191 99999',
-      motherName: studentData.motherName || 'Mother',
-      motherPhone: studentData.motherPhone || '+91 94191 88888',
-      guardianName: studentData.guardianName || studentData.parentName || 'Guardian',
-      guardianPhone: studentData.guardianPhone || studentData.parentPhone || '+91 94191 99999',
-      guardianEmail: studentData.guardianEmail || studentData.parentEmail || 'guardian@demo.com',
-      schoolName: studentData.schoolName || 'Govt Model School',
-      previousPercentage: studentData.previousPercentage || 88.5,
+      enrolledSubjects: resolvedSubjects,
+      parentName: studentData.parentName || studentData.fatherName || '',
+      parentPhone: studentData.parentPhone || studentData.fatherPhone || '',
+      parentEmail: studentData.parentEmail || '',
+      parentOccupation: studentData.parentOccupation || '',
+      fatherName: studentData.fatherName || '',
+      fatherPhone: studentData.fatherPhone || '',
+      motherName: studentData.motherName || '',
+      motherPhone: studentData.motherPhone || '',
+      guardianName: studentData.guardianName || '',
+      guardianPhone: studentData.guardianPhone || '',
+      guardianEmail: studentData.guardianEmail || '',
+      schoolName: studentData.schoolName || '',
+      previousPercentage:
+        studentData.previousPercentage !== undefined && studentData.previousPercentage !== ''
+          ? Number(studentData.previousPercentage)
+          : null,
       admissionDate: admDate,
       admissionSource: studentData.admissionSource || 'Direct Walk-in',
       scholarshipType: studentData.scholarshipType || 'None',
@@ -1005,8 +1011,8 @@ export const ErpDataProvider = ({ children }) => {
       name: branchData.name || 'New Branch',
       code: nextCode,
       city: branchData.city || 'Kashmir',
-      address: branchData.address || 'Main Campus Boulevard',
-      phone: branchData.phone || '+91 94190 99999',
+      address: branchData.address || '',
+      phone: branchData.phone || '',
       email: `${(branchData.name || 'branch').toLowerCase()}@careerheights.demo`,
       headFaculty: branchData.headFaculty || 'Faculty Lead',
       studentCount: 0,

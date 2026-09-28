@@ -328,7 +328,7 @@ export function getVisibleReports(dataset = {}, activeBranchId = 'all') {
   const totalAttendanceLogged = scopedAttendance.length;
   const attendanceRate = totalAttendanceLogged > 0
     ? (presentCount / totalAttendanceLogged) * 100
-    : 85.5;
+    : 0;
 
   const branchObj = branches.find((b) => b.id === activeBranchId);
   const scopeLabel = isAllBranches(activeBranchId)

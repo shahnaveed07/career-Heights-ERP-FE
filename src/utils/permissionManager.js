@@ -229,7 +229,7 @@ export const DEFAULT_ROLE_PERMISSIONS = {
     students: ['view', 'create', 'edit', 'assign', 'add'],
     teachers: ['view', 'assign'],
     accountant_coordinator: ['view'],
-    fees: ['view', 'collect', 'collect_payment', 'receipt', 'generate_receipt'],
+    fees: [], // Default Admin has NO fee permissions; fee access is optional and granted only via explicit user overrides
     attendance: ['view', 'mark', 'mark_attendance', 'edit'],
     academic: ['view', 'create', 'edit', 'add'],
     examination: ['view', 'create', 'edit', 'upload_omr', 'add'],
@@ -307,14 +307,8 @@ export const DEFAULT_ROLE_PERMISSIONS = {
     dashboard: ['view'],
   },
 
-  // HR (Head of HR, staff directory, leaves, attendance records)
+  // HR (Role reserved for future use — currently has NO dedicated administrative functionality)
   [SYSTEM_ROLES.HR]: {
-    users: ['view', 'create', 'edit', 'assign', 'add'],
-    hr_staff: ['view', 'create', 'edit', 'add'],
-    attendance: ['view', 'mark', 'mark_attendance', 'edit'],
-    documents: ['view', 'upload', 'approve', 'add', 'edit'],
-    communication: ['view', 'send', 'add'],
-    reports: ['view'],
     dashboard: ['view'],
   },
   // Custom Role (Granular user-defined role with custom permissions)
@@ -333,70 +327,167 @@ DEFAULT_ROLE_PERMISSIONS.counsellor = DEFAULT_ROLE_PERMISSIONS[SYSTEM_ROLES.ACCO
 /**
  * Check if a user has permission to perform an action on a module.
  * 
- * Enforces:
- * 1. View-Only Mode: If uiMode === 'view', ONLY 'view' action is permitted.
- * 2. SuperAdmin bypass: 'super_admin' (or legacy 'ceo') has unrestricted rights.
- * 3. Custom permissions check (if user has customPermissions).
- * 4. Granular role permissions table check.
+ * Enforces authoritative resolution hierarchy:
+ * user
+ *  ↓
+ * canonical role
+ *  ↓
+ * role permissions
+ *  ↓
+ * custom role permissions if applicable
+ *  ↓
+ * user permission overrides (EXPLICIT ALLOW & EXPLICIT DENY)
+ *  ↓
+ * branch scope (verified separately via canAccessBranch)
+ *  ↓
+ * View/Edit mode
+ *  ↓
+ * final authorization
  * 
  * Supports both:
- * checkPermission(user, 'students', 'create', uiMode)
- * checkPermission(user, 'students.create', 'view', uiMode)
+ * checkPermission(user, 'students', 'create', uiMode, customRolesRegistry)
+ * checkPermission(user, 'students.create', 'view', uiMode, customRolesRegistry)
  */
-export function checkPermission(user, moduleOrPermission, action = 'view', uiMode = 'edit') {
+export function checkPermission(
+  user,
+  moduleOrPermission,
+  action = 'view',
+  uiMode = 'edit',
+  customRolesRegistry = []
+) {
   if (!user) return false;
 
   let targetModule = moduleOrPermission;
   let targetAction = action;
 
-  // Support dot notation: can('students.create')
-  if (typeof moduleOrPermission === 'string' && moduleOrPermission.includes('.')) {
-    const parts = moduleOrPermission.split('.');
-    targetModule = parts[0];
-    targetAction = parts.slice(1).join('.');
+  // Support dot notation ('fees.collect') and colon notation ('fees:collect')
+  if (typeof moduleOrPermission === 'string') {
+    if (moduleOrPermission.includes('.')) {
+      const parts = moduleOrPermission.split('.');
+      targetModule = parts[0];
+      targetAction = parts.slice(1).join('.');
+    } else if (moduleOrPermission.includes(':')) {
+      const parts = moduleOrPermission.split(':');
+      targetModule = parts[0];
+      targetAction = parts.slice(1).join(':');
+    }
   }
 
-  // VIEW ONLY MODE: Strictly prevent any mutating action
+  targetModule = String(targetModule || '').toLowerCase().trim();
+  targetAction = normalizeAction(targetAction);
+
+  // VIEW ONLY MODE: Strictly lock mutating actions across all users
   if (uiMode === 'view' && targetAction !== 'view') {
     return false;
   }
 
   const role = normalizeRole(user.role);
 
-  // SuperAdmin has full permissions
+  // SuperAdmin has unrestricted rights (subject only to View-Only mutation lock above)
   if (role === SYSTEM_ROLES.SUPER_ADMIN) {
     return true;
   }
 
-  // Check if user has customPermissions or permissions attached
-  const customPerms = user.customPermissions || user.permissions;
-  if (customPerms) {
-    if (Array.isArray(customPerms)) {
-      const match = customPerms.some((p) => {
-        if (p === '*' || p === targetModule) return true;
-        const separator = p.includes(':') ? ':' : p.includes('.') ? '.' : null;
-        if (separator) {
-          const [m, a] = p.split(separator);
+  // 1. EVALUATE USER-SPECIFIC PERMISSION OVERRIDES (EXPLICIT ALLOW & EXPLICIT DENY)
+  const overrides = user.permissionOverrides || user.customPermissions || user.permissions;
+  if (overrides) {
+    const dotKey = `${targetModule}.${targetAction}`;
+    const colonKey = `${targetModule}:${targetAction}`;
+
+    // A) Key-value map with direct boolean flags
+    if (overrides[dotKey] === false || overrides[colonKey] === false) {
+      return false; // EXPLICIT DENY
+    }
+    if (overrides[dotKey] === true || overrides[colonKey] === true) {
+      return true; // EXPLICIT ALLOW
+    }
+
+    // Module-level boolean flag: { fees: false } or { fees: true }
+    if (overrides[targetModule] === false) {
+      return false; // EXPLICIT DENY for entire module
+    }
+    if (overrides[targetModule] === true) {
+      return true; // EXPLICIT ALLOW for entire module
+    }
+
+    // Nested object: { fees: { view: true, collect: false } }
+    if (
+      typeof overrides[targetModule] === 'object' &&
+      overrides[targetModule] !== null &&
+      !Array.isArray(overrides[targetModule])
+    ) {
+      const modObj = overrides[targetModule];
+      if (modObj[targetAction] === false) return false; // EXPLICIT DENY
+      if (modObj[targetAction] === true) return true; // EXPLICIT ALLOW
+      if (modObj['*'] === false) return false;
+      if (modObj['*'] === true) return true;
+    }
+
+    // Module array of allowed actions: { fees: ['view'] }
+    if (Array.isArray(overrides[targetModule])) {
+      const actList = overrides[targetModule];
+      if (actList.includes('*') || actionMatches(actList, targetAction)) {
+        return true;
+      }
+      // If module is explicitly listed in overrides with specific actions, unlisted actions are denied
+      return false;
+    }
+
+    // Flat Array of override strings: ['fees.view', '!fees.collect', '-fees.edit']
+    if (Array.isArray(overrides)) {
+      const isExplicitlyDenied = overrides.some(
+        (p) =>
+          p === `!${dotKey}` ||
+          p === `-${dotKey}` ||
+          p === `!${colonKey}` ||
+          p === `-${colonKey}` ||
+          p === `!${targetModule}` ||
+          p === `-${targetModule}`
+      );
+      if (isExplicitlyDenied) return false;
+
+      const isExplicitlyAllowed = overrides.some((p) => {
+        if (p === '*' || p === targetModule || p === `${targetModule}.*` || p === `${targetModule}:*`) {
+          return true;
+        }
+        if (p === dotKey || p === colonKey) {
+          return true;
+        }
+        const sep = p.includes(':') ? ':' : p.includes('.') ? '.' : null;
+        if (sep) {
+          const [m, a] = p.split(sep);
           return m === targetModule && actionMatches([a], targetAction);
         }
         return false;
       });
-      if (match) return true;
-    } else if (typeof customPerms === 'object') {
-      if (customPerms['*'] && actionMatches(customPerms['*'], targetAction)) {
+      if (isExplicitlyAllowed) return true;
+    }
+  }
+
+  // 2. EVALUATE CUSTOM ROLE PERMISSIONS (IF APPLICABLE)
+  const effectiveCustomRoleId = user.customRoleId || (role === SYSTEM_ROLES.CUSTOM ? user.customRoleId || user.id : null);
+  if (effectiveCustomRoleId || role === SYSTEM_ROLES.CUSTOM) {
+    const customRoleObj =
+      (customRolesRegistry || []).find((r) => r.id === effectiveCustomRoleId) ||
+      user.customRoleObj ||
+      (typeof user.customRole === 'object' ? user.customRole : null);
+
+    if (customRoleObj && customRoleObj.permissions) {
+      const cPerms = customRoleObj.permissions;
+      if (cPerms['*'] && actionMatches(cPerms['*'], targetAction)) {
         return true;
       }
-      if (customPerms[targetModule] && actionMatches(customPerms[targetModule], targetAction)) {
+      if (cPerms[targetModule] && actionMatches(cPerms[targetModule], targetAction)) {
         return true;
       }
     }
   }
 
-  // Check standard role permissions matrix
+  // 3. EVALUATE CANONICAL BASE ROLE DEFAULT PERMISSIONS
   const rolePerms = DEFAULT_ROLE_PERMISSIONS[role];
   if (!rolePerms) return false;
 
-  // Wildcard module
+  // Role wildcard
   if (rolePerms['*'] && actionMatches(rolePerms['*'], targetAction)) {
     return true;
   }

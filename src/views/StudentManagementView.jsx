@@ -116,10 +116,10 @@ export const StudentManagementView = ({ initialStudentId }) => {
   const [newStudentForm, setNewStudentForm] = useState({
     name: '',
     gender: 'Male',
-    dob: '2008-05-15',
+    dob: '',
     email: '',
     phone: '',
-    address: 'Main Town, Handwara, J&K',
+    address: '',
     // Academic Hierarchy: Branch → Class → Wing → Batch
     branchId: branches[0]?.id || 'b-hdw',
     classId: 'c-12-med',
@@ -132,7 +132,7 @@ export const StudentManagementView = ({ initialStudentId }) => {
     parentName: '',
     parentPhone: '',
     parentEmail: '',
-    parentOccupation: 'Government Service',
+    parentOccupation: '',
     fatherName: '',
     fatherPhone: '',
     motherName: '',
@@ -140,21 +140,21 @@ export const StudentManagementView = ({ initialStudentId }) => {
     guardianName: '',
     guardianPhone: '',
     // Academic History
-    schoolName: 'Govt Model Hr Sec School',
-    previousPercentage: 88.5,
+    schoolName: '',
+    previousPercentage: '',
     admissionSource: 'Direct Walk-in',
     scholarshipType: 'None',
     // Documents
-    submittedDocuments: ['Aadhaar Card', '10th Marksheet'],
-    documentsCount: 2,
-    pendingDocuments: 1,
+    submittedDocuments: [],
+    documentsCount: 0,
+    pendingDocuments: 0,
     // Portal Login Credentials
     portalLoginUsername: '',
     portalLoginTemporaryPassword: 'CH@2026!',
     // Financials
     feesTotal: 95000,
-    feesPaid: 35000,
-    remarks: 'Enrolled via academic intake. Orientation scheduled.',
+    feesPaid: 0,
+    remarks: '',
   });
 
   const handleComboSelect = (comboId) => {
@@ -205,8 +205,12 @@ export const StudentManagementView = ({ initialStudentId }) => {
 
   const handleAddSubmit = (e) => {
     e.preventDefault();
-    if (!newStudentForm.name.trim() || !newStudentForm.parentName.trim()) {
-      setFormError('Please fill out student name and parent/guardian information.');
+    if (!newStudentForm.name.trim() || !newStudentForm.phone.trim()) {
+      setFormError('Please fill out student name and contact phone number.');
+      return;
+    }
+    if (!newStudentForm.parentName.trim()) {
+      setFormError('Please fill out parent/guardian information.');
       return;
     }
     if (!newStudentForm.enrolledSubjects || newStudentForm.enrolledSubjects.length === 0) {

@@ -142,7 +142,7 @@ export function exportExecutiveDossierToCsv(branches = [], branchMetrics = [], b
       metric.convertedAdmissions || 0,
       metric.feeCollected || 0,
       metric.feePending || 0,
-      metric.avgAttendance ? `${metric.avgAttendance}%` : '88.5%',
+      metric.avgAttendance ? `${metric.avgAttendance}%` : '—',
       metric.staffCount || b.facultyCount || 0,
       todayStr,
     ];

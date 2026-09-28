@@ -191,7 +191,7 @@ export function getStudentEnrolledSubjectIds(student) {
     const combo = CANONICAL_SUBJECT_COMBOS.find((c) => c.id === student.subjectComboId);
     if (combo) return combo.subjectIds;
   }
-  return ['sub-phy']; // Default single subject
+  return []; // No actual enrollment -> empty array, do not fabricate subjects
 }
 
 /**

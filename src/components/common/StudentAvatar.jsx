@@ -39,16 +39,18 @@ export const StudentAvatar = ({
   const sizeConfig = SIZE_CLASSES[size] || SIZE_CLASSES.md;
   const resolvedImgClass = className || sizeConfig.img;
   const resolvedFallbackClass = fallbackClassName || sizeConfig.fallback;
-  const initials =
-    name
-      .trim()
-      .split(/\s+/)
-      .slice(0, 2)
-      .map((p) => p[0]?.toUpperCase() || '')
-      .join('') || 'ST';
+  const cleanName = (name || '').trim();
+  const parts = cleanName ? cleanName.split(/\s+/) : [];
+  let initials = 'U';
+  if (parts.length === 1 && parts[0]) {
+    initials = parts[0][0].toUpperCase();
+  } else if (parts.length >= 2) {
+    initials = ((parts[0][0] || '') + (parts[1][0] || '')).toUpperCase();
+  }
+
   if (!imageSource || imgError) {
     return (
-      <div className={resolvedFallbackClass} title={name} aria-label={name}>
+      <div className={resolvedFallbackClass} title={cleanName || 'User'} aria-label={cleanName || 'User'}>
         <span>{initials}</span>
       </div>
     );
@@ -56,10 +58,12 @@ export const StudentAvatar = ({
   return (
     <img
       src={imageSource}
-      alt={name}
+      alt={cleanName || 'User Avatar'}
       className={resolvedImgClass}
       onError={() => setImgError(true)}
       loading="lazy"
     />
   );
 };
+
+export const UserAvatar = StudentAvatar;

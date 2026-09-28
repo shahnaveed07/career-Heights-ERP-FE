@@ -15,10 +15,13 @@ import {
   Receipt,
   X,
   ShieldAlert,
+  Printer,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useErpData } from '../context/ErpDataContext';
 import { StudentAvatar } from '../components/common/StudentAvatar';
+import { Modal } from '../components/common/Modal';
+import { INSTITUTE_CONFIG } from '../config/instituteConfig';
 import {
   NOTIFICATION_TYPE_CONFIG,
   NOTIFICATION_EVENT_TYPES,
@@ -50,6 +53,7 @@ export const ParentPortalView = () => {
   );
   const [selectedNotificationFilter, setSelectedNotificationFilter] = useState('all');
   const [showContactModal, setShowContactModal] = useState(false);
+  const [receiptToPrint, setReceiptToPrint] = useState(null);
 
   const child = eligibleChildren.find((s) => s.id === selectedChildId) || eligibleChildren[0];
   const childResults = testResults.filter((r) => r.studentId === child?.id);
@@ -323,7 +327,7 @@ export const ParentPortalView = () => {
               childReceipts.map((rcpt) => (
                 <div
                   key={rcpt.id}
-                  className="rounded-xl border border-slate-200 p-3.5 flex items-center justify-between"
+                  className="rounded-xl border border-slate-200 p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
                 >
                   <div>
                     <p className="font-mono font-bold text-blue-900">
@@ -334,13 +338,23 @@ export const ParentPortalView = () => {
                       {rcpt.transactionRef}
                     </p>
                   </div>
-                  <div className="text-right">
-                    <p className="font-black text-slate-900 text-sm">
-                      ₹{rcpt.amount.toLocaleString()}
-                    </p>
-                    <span className="text-[10px] font-bold text-emerald-700">
-                      PAID &amp; SIGNED
-                    </span>
+                  <div className="flex items-center justify-between sm:justify-end gap-3 text-right">
+                    <div>
+                      <p className="font-black text-slate-900 text-sm">
+                        ₹{rcpt.amount.toLocaleString()}
+                      </p>
+                      <span className="text-[10px] font-bold text-emerald-700">
+                        PAID &amp; SIGNED
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setReceiptToPrint(rcpt)}
+                      className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition shadow-2xs"
+                    >
+                      <Printer className="h-3 w-3 text-slate-500" />
+                      <span>View</span>
+                    </button>
                   </div>
                 </div>
               ))
@@ -505,6 +519,113 @@ export const ParentPortalView = () => {
                 className="rounded-lg bg-blue-900 px-4 py-2 text-xs font-bold text-white hover:bg-blue-800"
               >
                 Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* PRINTABLE FEE RECEIPT MODAL */}
+      {receiptToPrint && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs">
+          <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl border border-slate-300 relative">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-200 print:hidden">
+              <span className="text-xs font-bold text-slate-600">
+                Official Fee Receipt Acknowledgment
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="flex items-center gap-1.5 rounded-lg bg-blue-900 px-3 py-1.5 text-xs font-bold text-white hover:bg-blue-800"
+                >
+                  <Printer className="h-3.5 w-3.5" />
+                  <span>Print Receipt</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setReceiptToPrint(null)}
+                  className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-200"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+            </div>
+
+            <div className="mt-4 p-5 border border-slate-200 rounded-xl bg-slate-50/50 space-y-4">
+              <div className="text-center border-b border-slate-200 pb-3">
+                <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-blue-900 text-white font-black text-lg mb-1">
+                  CH
+                </div>
+                <h2 className="text-base font-black tracking-tight text-slate-900">
+                  {INSTITUTE_CONFIG.name.toUpperCase()}
+                </h2>
+                <p className="text-[10px] text-slate-500 uppercase tracking-widest font-semibold">
+                  {receiptToPrint.branchName || child.branchName || 'Handwara'} Campus • {INSTITUTE_CONFIG.tagline}
+                </p>
+                <p className="text-[10px] text-slate-400">
+                  Email: {INSTITUTE_CONFIG.contact.email} | Contact: {INSTITUTE_CONFIG.contact.phone}
+                </p>
+              </div>
+
+              <div className="flex justify-between text-xs font-semibold py-1">
+                <div>
+                  <span className="text-slate-400">Receipt No: </span>
+                  <span className="font-mono text-blue-900 font-bold">
+                    {receiptToPrint.receiptNo}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-slate-400">Date: </span>
+                  <span>{receiptToPrint.date}</span>
+                </div>
+              </div>
+
+              <div className="rounded-lg bg-white p-3 border border-slate-200 text-xs space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Student Name:</span>
+                  <span className="font-bold text-slate-900">{child.name}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Student ID / Roll No:</span>
+                  <span className="font-mono text-slate-700">{child.studentId}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Course / Batch:</span>
+                  <span className="text-slate-700">{child.batchName}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Payment Mode:</span>
+                  <span className="font-semibold text-slate-800">{receiptToPrint.paymentMethod}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Transaction Reference:</span>
+                  <span className="font-mono text-slate-600 text-[11px]">{receiptToPrint.transactionRef}</span>
+                </div>
+              </div>
+
+              <div className="rounded-lg bg-blue-50/70 p-3.5 border border-blue-200 flex justify-between items-center">
+                <div>
+                  <span className="text-[11px] font-bold text-blue-900 uppercase">Amount Received</span>
+                  <p className="text-[10px] text-blue-700">Account status verified</p>
+                </div>
+                <span className="text-xl font-black text-blue-900">
+                  ₹{Number(receiptToPrint.amount).toLocaleString()}
+                </span>
+              </div>
+
+              <div className="pt-2 text-[10px] text-slate-400 text-center border-t border-slate-200">
+                Official electronic receipt generated by Career Heights Accounts &amp; Audit System.
+              </div>
+            </div>
+
+            <div className="mt-4 flex justify-end print:hidden">
+              <button
+                type="button"
+                onClick={() => setReceiptToPrint(null)}
+                className="rounded-lg bg-slate-100 hover:bg-slate-200 px-4 py-2 text-xs font-semibold text-slate-700 transition"
+              >
+                Dismiss
               </button>
             </div>
           </div>

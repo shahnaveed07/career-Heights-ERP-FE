@@ -43,17 +43,10 @@ export const FeesAccountsView = ({ autoOpenPayment }) => {
   } = useErpData();
 
   const { activeBranchFilter, setActiveBranchFilter, uiMode, can, currentUser } = useAuth();
-  const canCollectFee = uiMode !== 'view' && (can('fees', 'collect_payment') || can('fees', 'edit'));
-  const canSendReminders = uiMode !== 'view' && can('communication', 'add');
-  const canEditFees = canCollectFee;
-  const canManageSalaries =
-    uiMode !== 'view' &&
-    (can('fees', 'edit') ||
-      can('hr', 'edit') ||
-      currentUser?.role === 'super_admin' ||
-      currentUser?.role === 'hq_admin' ||
-      currentUser?.role === 'accountant_coordinator' ||
-      currentUser?.role === 'branch_admin');
+  const canCollectFee = uiMode !== 'view' && (can('fees', 'collect') || can('fees', 'collect_payment'));
+  const canSendReminders = uiMode !== 'view' && (can('communication', 'send') || can('communication', 'add'));
+  const canEditFees = uiMode !== 'view' && can('fees', 'edit');
+  const canManageSalaries = uiMode !== 'view' && (can('fees', 'manage_salary') || can('fees', 'edit'));
 
   const [activeTab, setActiveTab] = useState('fees'); // 'fees' | 'payroll'
   const [searchTerm, setSearchTerm] = useState('');
